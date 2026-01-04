@@ -1,6 +1,6 @@
 # <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the missing debugger for Voice AI apps
 
-Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTelemetry traces look impressive … yet explain nothing? If so, meet Finchvox, a local debugability tool purpose-built for Voice AI apps. 
+Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTelemetry traces look impressive … yet explain nothing? If so, meet Finchvox, a local debuggability tool purpose-built for Voice AI apps. 
 
 Finchvox unifies conversation audio and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Good luck convincing DataDog to add that!
 
