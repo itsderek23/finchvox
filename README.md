@@ -1,4 +1,4 @@
-# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the missing debugger for Voice AI apps
+# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - elevated debuggability for Voice AI apps
 
 Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTelemetry traces look impressive … yet explain nothing? If so, meet Finchvox, a local debuggability tool purpose-built for Voice AI apps. 
 
