@@ -33,6 +33,17 @@ uv run finchvox --help
 
 ## Setup - Enable Tracing in Your Pipecat Application
 
+### AI-led Steps
+
+Starter prompt:
+
+```
+I want you to follow the "Enable Tracing in Your Pipecat Application" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
+```
+
+
+### Manual Steps
+
 ```python
 import os
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
