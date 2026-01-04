@@ -1,11 +1,19 @@
-# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the local Voice AI debugger
+# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the missing debugger for Voice AI apps
 
-Finchvox makes it easier to understand where your cascading Voice AI pipeline went wrong. It collects conversation audio and traces, presenting them in a single UI.
+Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTelemetry traces look impressive … yet explain nothing? If so, meet Finchvox, a local debuggability tool purpose-built for Voice AI apps. 
 
-There are two main components:
+Finchvox unifies conversation audio and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Good luck convincing DataDog to add that!
 
-1. The Finchvox server - collects OpenTelemetry spans and audio data and serves the Finchvox UI.
-2. The Finchvox audio recorder - a Pipecat processor that records conversation audio for each client session.
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage---finchvox-server)
+- [Setup](#setup)
+  - [✨ AI Install](#-let-your-ai-coding-agent-do-the-work)
+  - [Step 1 – Enable Tracing in Your Pipecat Application](#step-1---enable-tracing-in-your-pipecat-application)
+  - [Step 2 – Enable Audio Recording](#step-2---enable-audio-recording)
+- [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
 
@@ -15,10 +23,10 @@ There are two main components:
 ## Installation
 
 ```bash
-# Using uv (recommended)
+# uv
 uv add finchvox "pipecat-ai[tracing]"
 
-# Or with pip (PyPI)
+# Or with pip
 pip install finchvox "pipecat-ai[tracing]"
 ```
 
@@ -34,7 +42,17 @@ For the list of available options, run:
 uv run finchvox --help
 ```
 
-## Setup - Enable Tracing in Your Pipecat Application
+## Setup
+
+### ✨ Let your AI coding agent do the work!
+
+Try this starter prompt:
+
+```
+Follow the "Setup" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
+```
+
+### Step 1 - Enable Tracing in Your Pipecat Application
 
 ```python
 import os
@@ -67,7 +85,7 @@ task = PipelineTask(
 
 For the full list of OpenTelemetry setup options, see the [Pipecat OpenTelemetry docs](https://docs.pipecat.ai/server/utilities/opentelemetry#overview).
 
-## Setup - Enable Audio Recording
+### Step 2 - Enable Audio Recording
 
 Import the audio recorder and add it to your pipeline:
 
