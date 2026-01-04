@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trace Detail - Finchvox</title>
+    <link rel="stylesheet" href="/css/app.css">
+    <script defer src="/lib/alpine.min.js"></script>
+    <script src="/lib/wavesurfer.min.js"></script>
+</head>
+<body x-data="traceDetailApp()" x-init="init()">
+
+    <!-- Main flex container for content and side panel -->
+    <div class="page-layout">
+        <!-- Main content area -->
+        <div class="main-content" :class="{ 'panel-open': isPanelOpen }">
+            <!-- Fixed container for header and audio player -->
+            <div class="fixed-container">
+                <!-- Back button -->
+                <div class="page-header">
+                    <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="logo"> <a href="/">Traces</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="traceId">loading...</span>
+                    <span x-show="isPolling" class="live-badge">Live</span>
+                </div>
+
+                <!-- Waiting for Audio (Live Trace) -->
+                <div x-show="audioError && isPolling" x-cloak class="audio-error">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="audio-error-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <span>
+                        Waiting for audio data... (trace is live)
+                    </span>
+                </div>
+
+                <!-- Audio Error Message (Completed Trace) -->
+                <div x-show="audioError && !isPolling" x-cloak class="error">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="error-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <span>
+                        No audio data available. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank">troubleshooting guide</a>.
+                    </span>
+                </div>
+
+                <!-- Audio Player Section -->
+                <section class="audio-section" x-show="!audioError">
+                <div class="audio-controls">
+                    <div class="audio-controls-left">
+                        <button @click="togglePlay()" class="btn" title="SPACEBAR">
+                            <span x-show="!playing">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                  </svg> <span>Play</span>
+                            </span>
+                            <span x-show="playing">
+                                <span>⏸</span><span>Pause</span>
+                            </span>
+                        </button>
+                        <span class="audio-time-display">
+                            <span class="time" x-text="formatTime(currentTime)">00:00</span>
+                            <span class="time-separator">/</span>
+                            <span class="time" x-text="formatTime(duration)">00:00</span>
+                        </span>
+                    </div>
+                    <a :href="'/api/audio/' + traceId + '/download'" download class="btn download-button" title="Download Audio">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                    </a>
+                </div>
+
+
+                <!-- Hover Marker Overlay -->
+                <div class="hover-marker-overlay" x-show="hoverMarker.visible" :style="`left: ${getMarkerPosition()}`">
+                    <div class="hover-marker-label" x-text="getMarkerTimeLabel()"></div>
+                    <div class="hover-marker-line"></div>
+                </div>
+
+                <div id="timeline"></div>
+
+                <!-- Waveform Channel Icons -->
+                <div class="waveform-channel-icons">
+                    <svg class="channel-icon mic-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" title="Human">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                    </svg>
+                    <svg class="channel-icon robot-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" title="AI Agent">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M8.48 4h4l.5.5v2.03h.52l.5.5V8l-.5.5h-.52v3l-.5.5H9.36l-2.5 2.76L6 14.4V12H3.5l-.5-.64V8.5h-.5L2 8v-.97l.5-.5H3V4.36L3.53 4h4V2.86A1 1 0 0 1 7 2a1 1 0 0 1 2 0 1 1 0 0 1-.52.83V4zM12 8V5H4v5.86l2.5.14H7v2.19l1.8-2.04.35-.15H12V8zm-2.12.51a2.71 2.71 0 0 1-1.37.74v-.01a2.71 2.71 0 0 1-2.42-.74l-.7.71c.34.34.745.608 1.19.79.45.188.932.286 1.42.29a3.7 3.7 0 0 0 2.58-1.07l-.7-.71zM6.49 6.5h-1v1h1v-1zm3 0h1v1h-1v-1z"/>
+                    </svg>
+                </div>
+
+                <!-- Human text chunks -->
+                <div class="text-chunk-row human-chunks"
+                    x-show="getTurnChunks().length > 0">
+                    <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
+                        <div class="text-chunk human-chunk"
+                            x-show="chunk.humanText"
+                            :class="{ 'highlighted': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
+                            :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
+                            @mouseenter="highlightSpanFromChunk(chunk.span)"
+                            @mouseleave="unhighlightSpanFromChunk()"
+                            @click="handleChunkClick(chunk.span)">
+                            <span class="chunk-text" x-text="chunk.humanText"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <div id="waveform"></div>
+
+                <!-- Bot text chunks -->
+                <div class="text-chunk-row bot-chunks"
+                    x-show="getTurnChunks().length > 0">
+                    <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
+                        <div class="text-chunk bot-chunk"
+                            x-show="chunk.botText"
+                            :class="{ 'highlighted': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
+                            :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
+                            @mouseenter="highlightSpanFromChunk(chunk.span)"
+                            @mouseleave="unhighlightSpanFromChunk()"
+                            @click="handleChunkClick(chunk.span)">
+                            <span class="chunk-text" x-html="formatBotChunkText(chunk)"></span>
+                        </div>
+                    </template>
+                </div>
+            </section>
+            </div><!-- End fixed-container -->
+
+    <!-- Trace View -->
+    <main class="content-area">
+        <div class="waterfall-container">
+
+            <!-- Expand/Collapse All Button -->
+            <div class="waterfall-toolbar">
+                <button @click="toggleWaterfallExpansion()"
+                        class="btn"
+                        :title="isWaterfallExpanded ? 'Collapse all spans below turns' : 'Expand all spans'">
+                    <!-- Collapse icon (shown when expanded) -->
+                    <span>
+                        <svg x-show="isWaterfallExpanded" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon" aria-hidden="true">
+                            <path d="M12 22v-6"></path>
+                            <path d="M12 8V2"></path>
+                            <path d="M4 12H2"></path>
+                            <path d="M10 12H8"></path>
+                            <path d="M16 12h-2"></path>
+                            <path d="M22 12h-2"></path>
+                            <path d="m15 19-3-3-3 3"></path>
+                            <path d="m15 5-3 3-3-3"></path>
+                        </svg>
+                        <!-- Expand icon (shown when collapsed) -->
+                        <svg x-show="!isWaterfallExpanded" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon" aria-hidden="true">
+                            <path d="M12 22v-6"></path>
+                            <path d="M12 8V2"></path>
+                            <path d="M4 12H2"></path>
+                            <path d="M10 12H8"></path>
+                            <path d="M16 12h-2"></path>
+                            <path d="M22 12h-2"></path>
+                            <path d="m15 19-3 3-3-3"></path>
+                            <path d="m15 5-3-3-3 3"></path>
+                        </svg>
+                        <span x-text="isWaterfallExpanded ? 'Collapse All' : 'Expand All'"></span>
+                    </span>
+                </button>
+                <a :href="'/api/trace/' + traceId + '/raw'" target="_blank" class="btn" title="View raw trace data">
+                    <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                        </svg>
+                        <span>Raw</span>
+                    </span>
+                </a>
+            </div>
+
+            <!-- Waterfall Body (Scrollable) -->
+            <div class="waterfall-body">
+                <template x-for="span in waterfallSpans" :key="span.span_id_hex">
+                    <div class="waterfall-row"
+                         :class="{ 'selected': highlightedSpan?.span_id_hex === span.span_id_hex || selectedSpan?.span_id_hex === span.span_id_hex || chunkHoveredSpan?.span_id_hex === span.span_id_hex }"
+                         :data-span-id="span.span_id_hex"
+                         @click="handleRowClick(span)"
+                         @mouseenter="highlightSpan(span)"
+                         @mouseleave="unhighlightSpan()">
+
+                        <!-- Timeline Track -->
+                        <div class="waterfall-timeline-track">
+                            <!-- Timeline Bar with Labels -->
+                            <div class="timeline-bar"
+                                 :class="getTimelineBarClasses(span)"
+                                 :style="`left: ${getTimelineBarStyle(span).left}; width: ${getTimelineBarStyle(span).width}`">
+
+                                <!-- Expand Button -->
+                                <template x-if="span.childCount > 0">
+                                    <button class="expand-toggle"
+                                            :class="{ 'expanded': expandedSpanIds.has(span.span_id_hex) }"
+                                            @click.stop="toggleSpanExpansion(span)">
+                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                            <path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </template>
+
+                                <span class="bar-label" x-text="span.name"></span>
+                                <span class="bar-duration" x-html="formatBarDuration(span)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+        </div>
+    </main>
+
+        </div><!-- End main-content -->
+
+        <!-- Side Panel (span details) -->
+        <aside class="details-panel"
+           x-show="isPanelOpen"
+           x-transition:enter="slide-in-right"
+           x-transition:enter-start="slide-in-right-start"
+           x-transition:enter-end="slide-in-right-end"
+           x-transition:leave="slide-out-right"
+           x-transition:leave-start="slide-out-right-start"
+           x-transition:leave-end="slide-out-right-end">
+            <div class="panel-header">
+                <h3 x-text="selectedSpan?.name">Span Details</h3>
+                <button @click="closePanel()" class="close-button" title="ESC">✕</button>
+            </div>
+            <div class="panel-content">
+                <div class="detail-grid">
+                    <div class="detail-row">
+                        <label>Duration:</label>
+                        <span x-text="formatSpanDuration(selectedSpan)"></span>
+                    </div>
+                    <div class="detail-row" x-show="getTTFB(selectedSpan) !== null">
+                        <label title="Time to First Byte">TTFB</label>
+                        <span x-text="formatTTFB(selectedSpan)"></span>
+                    </div>
+                    <div class="detail-row" x-show="getUserBotLatency(selectedSpan) !== null">
+                        <label>User ↔ Bot Latency</label>
+                        <span x-html="formatUserBotLatency(selectedSpan)"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Relative start time</label>
+                        <span x-text="formatRelativeStartTime(selectedSpan)"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Start time</label>
+                        <span x-text="formatTimestamp(selectedSpan?.start_time_unix_nano)"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>End time</label>
+                        <span x-text="formatTimestamp(selectedSpan?.end_time_unix_nano)"></span>
+                    </div>
+                    <div class="detail-row" x-show="wasInterrupted(selectedSpan) !== null">
+                        <label>Interrupted?</label>
+                        <span x-html="formatInterrupted(selectedSpan)"></span>
+                    </div>
+                </div>
+
+                <!-- Dedicated attribute displays for specific span types -->
+
+                <!-- LLM Input -->
+                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'input')">
+                    <label class="section-label">Input</label>
+                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'input')"></pre>
+                </div>
+
+                <!-- Tool Calls -->
+                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && getToolCalls(selectedSpan).length > 0">
+                    <label class="section-label">Tool Calls</label>
+                    <pre class="attributes-json dedicated-attribute" x-text="formatToolCalls(selectedSpan)"></pre>
+                </div>
+
+                <!-- LLM Output -->
+                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'output')">
+                    <label class="section-label">Output</label>
+                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'output')"></pre>
+                </div>
+
+                <!-- TTS Text -->
+                <div class="attributes-section" x-show="selectedSpan?.name === 'tts' && hasAttribute(selectedSpan, 'text')">
+                    <label class="section-label">Text</label>
+                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'text')"></pre>
+                </div>
+
+                <!-- STT Transcript -->
+                <div class="attributes-section" x-show="selectedSpan?.name === 'stt' && hasAttribute(selectedSpan, 'transcript')">
+                    <label class="section-label">Transcript</label>
+                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'transcript')"></pre>
+                </div>
+
+                <!-- Raw Span JSON -->
+                <div class="attributes-section">
+                    <label class="section-label">
+                        Raw
+                        <button class="btn copy-button"
+                              :class="{ 'copied': spanCopied }"
+                              @click="copySpanToClipboard()"
+                              title="Copy to Clipboard">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                              </svg>                        
+                        </button>
+                    </label>
+                    <pre class="attributes-json dedicated-attribute" x-text="getRawSpanJSON(selectedSpan)"></pre>
+                </div>
+            </div>
+        </aside>
+
+    </div><!-- End page-layout -->
+
+    <script src="/js/time-utils.js"></script>
+    <script src="/js/trace_detail.js"></script>
+</body>
+</html>

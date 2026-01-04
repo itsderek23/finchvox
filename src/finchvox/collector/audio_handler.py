@@ -1,0 +1,146 @@
+"""
+Audio handler for storing conversation audio chunks.
+
+This module provides the AudioHandler class which manages the storage of
+audio chunks and their associated metadata, organized by trace ID.
+"""
+
+import json
+from pathlib import Path
+from typing import Optional
+
+import aiofiles
+from loguru import logger
+from finchvox.collector.config import get_trace_audio_dir
+
+
+class AudioHandler:
+    """Handles writing audio chunks to organized directory structure."""
+
+    def __init__(self, data_dir: Path):
+        """
+        Initialize audio handler.
+
+        Args:
+            data_dir: Base data directory (e.g., ~/.finchvox)
+        """
+        self.data_dir = data_dir
+        logger.info(f"AudioHandler initialized with data_dir: {self.data_dir}")
+
+    async def save_audio_chunk(
+        self,
+        trace_id: str,
+        chunk_number: int,
+        audio_data: bytes,
+        metadata: dict,
+    ) -> Optional[Path]:
+        """
+        Save audio chunk with metadata.
+
+        Directory structure:
+        data_dir/
+          traces/
+            {trace_id}/
+              audio/
+                chunk_0000.wav
+                chunk_0000.json  # metadata
+                chunk_0001.wav
+                chunk_0001.json
+
+        Args:
+            trace_id: OpenTelemetry trace ID (32 hex chars)
+            chunk_number: Sequential chunk number
+            audio_data: Raw audio file bytes
+            metadata: Dictionary containing chunk metadata
+
+        Returns:
+            Path to saved audio file, or None if save failed
+        """
+        try:
+            # Validate trace_id format
+            if not self._is_valid_trace_id(trace_id):
+                logger.error(f"Invalid trace_id format: {trace_id}")
+                return None
+
+            # Create trace-specific audio directory
+            trace_audio_dir = get_trace_audio_dir(self.data_dir, trace_id)
+            trace_audio_dir.mkdir(exist_ok=True, parents=True)
+
+            # Generate filenames with zero-padded chunk number
+            audio_file = trace_audio_dir / f"chunk_{chunk_number:04d}.wav"
+            metadata_file = trace_audio_dir / f"chunk_{chunk_number:04d}.json"
+
+            # Save audio file (async to avoid blocking)
+            async with aiofiles.open(audio_file, "wb") as f:
+                await f.write(audio_data)
+
+            # Save metadata
+            async with aiofiles.open(metadata_file, "w") as f:
+                await f.write(json.dumps(metadata, indent=2))
+
+            logger.info(
+                f"Saved audio chunk {chunk_number} for trace {trace_id[:8]}... "
+                f"({len(audio_data)} bytes)"
+            )
+
+            return audio_file
+
+        except OSError as e:
+            # Disk full, permission denied, etc.
+            logger.error(
+                f"Failed to save audio chunk {chunk_number} for trace {trace_id[:8]}...: {e}",
+                exc_info=True,
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                f"Unexpected error saving audio chunk {chunk_number} "
+                f"for trace {trace_id[:8]}...: {e}",
+                exc_info=True,
+            )
+            return None
+
+    def _is_valid_trace_id(self, trace_id: str) -> bool:
+        """
+        Validate trace_id format.
+
+        Args:
+            trace_id: Trace ID to validate
+
+        Returns:
+            True if valid (32 hex chars), False otherwise
+        """
+        if len(trace_id) != 32:
+            return False
+        try:
+            int(trace_id, 16)  # Validate it's hexadecimal
+            return True
+        except ValueError:
+            return False
+
+    def get_trace_audio_dir(self, trace_id: str) -> Path:
+        """
+        Get directory path for a trace's audio files.
+
+        Args:
+            trace_id: OpenTelemetry trace ID
+
+        Returns:
+            Path to trace-specific audio directory
+        """
+        return get_trace_audio_dir(self.data_dir, trace_id)
+
+    def list_chunks(self, trace_id: str) -> list[Path]:
+        """
+        List all audio chunks for a trace.
+
+        Args:
+            trace_id: OpenTelemetry trace ID
+
+        Returns:
+            Sorted list of audio file paths for the trace
+        """
+        trace_dir = self.get_trace_audio_dir(trace_id)
+        if not trace_dir.exists():
+            return []
+        return sorted(trace_dir.glob("chunk_*.wav"))

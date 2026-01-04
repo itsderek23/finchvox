@@ -1,0 +1,39 @@
+[project]
+name = "finchvox"
+version = "0.0.1"
+description = "Voice AI observability dev tool for Pipecat"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.60.0",
+    "opentelemetry-proto>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
+    "protobuf>=4.25.0,<6.0.0",
+    "loguru>=0.7.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.9",
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.9.0",
+    "ruff>=0.14.10",
+]
+
+[project.scripts]
+finchvox = "finchvox.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatchling.build.targets.wheel]
+packages = ["src/finchvox"]
+
+[tool.hatchling.build.targets.wheel.force-include]
+"ui" = "finchvox/ui"

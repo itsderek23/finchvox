@@ -1,0 +1,774 @@
+/* ==========================================
+   FINCHVOX UI STYLES
+   ========================================== */
+/*
+   TABLE OF CONTENTS:
+   1. CSS Variables & Root Styles
+   2. Base & Reset Styles
+   3. Layout & Page Structure
+   4. Header & Navigation
+   5. Audio Player & Waveform
+   6. Text Chunks & Hover Markers
+   7. Waterfall View
+   8. Details Panel
+   9. Traces List View
+   10. Scrollbar Styles
+   11. Utility Classes
+*/
+
+/* ==========================================
+   1. CSS VARIABLES & ROOT STYLES
+   ========================================== */
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #2a2a2a;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #6b7280;
+    --accent: #a855f7;
+    --accent-hover: #9333ea;
+    --border: #333333;
+    --zebra-stripe: #0f0f0f;
+    --span-stt: #f97316;
+    --span-stt-progress: #ea580c;
+    --span-llm: #ec4899;
+    --span-tts: #a855f7;
+    --span-turn: #10b981;
+    --span-default: #6b7280;
+
+    --waterfall-row-height: 32px;
+    --gutter-indent-size: 16px;
+    --gutter-base-width: 32px;
+}
+
+/* ==========================================
+   2. BASE & RESET STYLES
+   ========================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 14px;
+}
+
+button:focus-visible {
+    outline: none;
+}
+
+a {
+    color: #a855f7;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+a:hover, a:focus {
+    color: #c084fc;
+    text-decoration: underline;
+}
+
+/* ==========================================
+   3. LAYOUT & PAGE STRUCTURE
+   ========================================== */
+.page-layout {
+    display: flex;
+    flex: 1;
+    overflow-y: hidden;
+    overflow-x: visible;
+    position: relative;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: visible;
+    transition: margin-right 0.3s ease-out;
+}
+
+.main-content.panel-open {
+    margin-right: 400px;
+}
+
+.fixed-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: var(--bg-primary);
+}
+
+.main-content.panel-open .fixed-container {
+    right: 400px;
+}
+
+.content-area {
+    flex: 1;
+    margin-top: 280px;
+}
+
+/* ==========================================
+   4. HEADER & NAVIGATION
+   ========================================== */
+.page-header {
+    padding: 0.9rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--bg-primary);
+}
+
+.logo {
+    height: 20px;
+    width: auto;
+}
+
+/* ==========================================
+   5. AUDIO PLAYER & WAVEFORM
+   ========================================== */
+.audio-section {
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.audio-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.audio-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.download-button {
+    text-decoration: none;
+    display: flex;
+    gap: 8px;
+}
+
+.audio-time-display {
+    font-size: 11px;
+    line-height: 24px;
+    height: 24px;
+    vertical-align: middle;
+}
+
+.time {
+    font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+    color: var(--text-secondary);
+}
+
+.time-separator {
+    color: var(--text-tertiary);
+}
+
+#timeline {
+    height: 24px;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2px;
+}
+
+.timeline-marker span {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+#waveform {
+    margin-bottom: 0.25rem;
+    border-radius: 4px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    height: 81px;
+}
+
+.waveform-channel-icons {
+    position: absolute;
+    top: 94px;
+    left: 8px;
+    width: 16px;
+    z-index: 10;
+}
+
+.channel-icon {
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    left: 0;
+    opacity: 1.0;
+    cursor: default;
+}
+
+.mic-icon {
+    top: 74px;
+    color: var(--span-stt);
+}
+
+.robot-icon {
+    top: 114px;
+    color: var(--span-tts);
+}
+
+.error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    margin: 100px 2rem 1rem 2rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: #fb923c;
+}
+
+.error-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.error a {
+    color: #fb923c;
+    text-decoration: underline;
+}
+
+.error a:hover {
+    color: #fdba74;
+}
+
+/* ==========================================
+   6. TEXT CHUNKS & HOVER MARKERS
+   ========================================== */
+.text-chunk-row {
+    position: relative;
+    height: 22px;
+    margin-bottom: 0.25rem;
+    pointer-events: none;
+}
+
+.text-chunk-row.bot-chunks {
+    margin-bottom: 0;
+}
+
+.text-chunk {
+    position: absolute;
+    height: 20px;
+    padding: 0px 6px;
+    background-color: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border: 1px solid black;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+}
+
+.text-chunk:hover {
+    background-color: #3a3a3a;
+}
+
+.text-chunk.highlighted {
+    background-color: #3a3a3a;
+}
+
+.chunk-text {
+    font-size: 10px;
+    line-height: 10px;
+}
+
+.hover-marker-overlay {
+    position: absolute;
+    top: 104px;
+    left: 0;
+    height: 157px;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.hover-marker-line {
+    position: absolute;
+    top: 16px;
+    height: 117px;
+    left: 0;
+    width: 1px;
+    background-color: #6b7280;
+}
+
+.hover-marker-label {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #6b7280;
+    color: #000000;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    font-family: monospace;
+    white-space: nowrap;
+    z-index: 20;
+}
+
+/* ==========================================
+   7. WATERFALL VIEW
+   ========================================== */
+.waterfall-container {
+    overflow-y: hidden;
+    overflow-x: visible;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 320px);
+}
+
+.waterfall-toolbar {
+    padding: 1rem 2rem 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.waterfall-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: visible;
+    padding: 0rem 2rem 0 2rem;
+}
+
+.waterfall-row {
+    height: var(--waterfall-row-height);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-left: 1px solid transparent;
+
+}
+
+.waterfall-row:nth-child(even) {
+    background: var(--zebra-stripe);
+}
+
+.waterfall-row:hover {
+    background: rgba(168, 85, 247, 0.08);
+}
+
+.waterfall-row.selected {
+    background: rgba(168, 85, 247, 0.15);
+    border-left: 1px solid var(--accent);
+}
+
+.expand-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    transition: color 0.2s;
+    z-index: 2;
+    margin-left: -22px;
+}
+
+.expand-toggle:hover {
+    color: var(--text-primary);
+}
+
+.expand-toggle svg {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s;
+}
+
+.expand-toggle.expanded svg {
+    transform: rotate(90deg);
+}
+
+.waterfall-timeline-track {
+    position: relative;
+    padding: 0 16px 0 32px;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.timeline-bar {
+    position: absolute;
+    height: 22px;
+    min-width: 1px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    overflow: visible;
+    border-radius: 2px;
+    border: 1px solid transparent;
+}
+
+.timeline-bar:hover {
+    filter: brightness(1.2);
+    z-index: 5;
+}
+
+.bar-stt { background: var(--span-stt); }
+.bar-llm { background: var(--span-llm); }
+.bar-tts { background: var(--span-tts); }
+.bar-turn { background: var(--span-turn); }
+
+.selected .timeline-bar {
+    border: 1px solid white;
+    z-index: 10;
+}
+
+.bar-label {
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    padding: 0 8px 0 4px;
+}
+
+.bar-duration {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 10px;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    white-space: nowrap;
+}
+
+.span-stt {
+    background: var(--span-stt);
+}
+
+.span-llm {
+    background: var(--span-llm);
+}
+
+.span-tts {
+    background: var(--span-tts);
+}
+
+/* ==========================================
+   8. DETAILS PANEL
+   ========================================== */
+.details-panel {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-primary);
+}
+
+.panel-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.close-button:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.panel-content {
+    padding: 2rem;
+}
+
+.detail-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 1rem;
+}
+
+.detail-row label {
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.detail-row span {
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.section-label {
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 0.5rem;
+    justify-content: space-between;
+    display: flex;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.attributes-json {
+    background: var(--bg-primary);
+    padding: 0.5rem;
+    overflow-x: auto;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #10b981;
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+
+.attributes-json.dedicated-attribute {
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.slide-in-right {
+    transition: transform 0.3s ease-out;
+}
+
+.slide-in-right-start {
+    transform: translateX(100%);
+}
+
+.slide-in-right-end {
+    transform: translateX(0);
+}
+
+.slide-out-right {
+    transition: transform 0.3s ease-in;
+}
+
+.slide-out-right-start {
+    transform: translateX(0);
+}
+
+.slide-out-right-end {
+    transform: translateX(100%);
+}
+
+.copy-button {
+    margin-left: 1rem;
+}
+
+.copy-button.copied {
+    opacity: 1;
+    color: #10b981;
+}
+
+/* ==========================================
+   9. TRACES LIST VIEW
+   ========================================== */
+.traces-list-view {
+    flex: 1;
+    overflow: auto;
+    padding: 0 2rem 4rem 2rem;
+}
+
+.empty-traces {
+    margin-top: 2rem;
+}
+
+.traces-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.traces-table thead {
+    background: var(--bg-tertiary);
+}
+
+.traces-table th {
+    text-align: left;
+    padding: 1rem 1.5rem;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.trace-row {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+}
+
+.trace-row:nth-child(even) {
+    background: var(--zebra-stripe);
+}
+
+.trace-row:hover {
+    background: rgba(168, 85, 247, 0.08);
+}
+
+.trace-row td {
+    padding: 1rem 1.5rem;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.trace-id {
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 13px;
+}
+
+/* ==========================================
+   10. SCROLLBAR STYLES
+   ========================================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444444;
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--bg-primary);
+}
+
+/* ==========================================
+   11. UTILITY CLASSES
+   ========================================== */
+.secondary-text {
+    color: var(--text-secondary);
+}
+
+.mono {
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 12px;
+}
+
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #fb923c;
+    font-weight: 600;
+}
+
+.live-badge::before {
+    content: "●";
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+
+.btn {
+    height: 24px;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 2px;
+    transition: background 0.2s;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.btn:hover {
+    background: var(--bg-tertiary);
+    text-decoration: none;
+    color: var(--text-secondary);
+}
+
+.btn:focus {
+    outline: none;
+    text-decoration: none;
+    color: var(--text-secondary);
+}
+
+.btn span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn svg {
+    width: 16px;
+    height: 16px;
+}

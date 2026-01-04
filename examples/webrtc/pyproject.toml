@@ -1,0 +1,8 @@
+[project]
+name = "pipecat-finchvox-tracing"
+version = "0.0.1"
+description = "A Pipecat example using Finchvox OTEL tracing"
+requires-python = ">=3.10"
+dependencies = [
+    "pipecat-ai[daily,webrtc,websocket,silero,cartesia,deepgram,openai,tracing,runner]>=0.0.82",
+]

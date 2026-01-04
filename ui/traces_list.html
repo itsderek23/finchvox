@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traces - Finchvox</title>
+    <link rel="stylesheet" href="/css/app.css">
+    <script src="/js/time-utils.js"></script>
+    <script defer src="/lib/alpine.min.js"></script>
+</head>
+<body x-data="tracesListApp()" x-init="init()">
+    <div class="page-header">
+        <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="logo">
+        <span class="secondary-text">Traces</span> <span>/</span> <span class="trace-count" x-text="`${traces.length} traces`"></span>
+    </div>
+    <main class="traces-list-view">
+        <div x-show="traces.length === 0" class="error" style="margin:100px 2rem 1rem 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="error-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <span>
+                Is this thing on? No traces have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank">troubleshooting guide</a>.
+                <div x-show="dataDir && dataDir.length > 0" class="secondary-text" style="display:block; margin-top:0.5em;">
+                    Data directory: <span class="mono" x-text="dataDir"></span>
+                </div>
+            </span>
+        </div>
+
+        <table class="traces-table" x-show="traces.length > 0">
+            <thead>
+                <tr>
+                    <th>Service Name</th>
+                    <th>Trace ID</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                    <th>Spans</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="trace in traces" :key="trace.trace_id">
+                    <tr class="trace-row">
+                        <td x-text="trace.service_name || '-'"></td>
+                        <td class="trace-id">
+                            <a class="mono" :href="`/traces/${trace.trace_id}`" x-text="trace.trace_id"></a>
+                        </td>
+                        <td x-text="formatDate(trace.start_time)"></td>
+                        <td x-text="formatDate(trace.end_time)"></td>
+                        <td x-text="formatDuration(trace.duration_ms)"></td>
+                        <td x-text="trace.span_count"></td>
+                        <td>
+
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </main>
+
+    <script src="/js/traces_list.js"></script>
+</body>
+</html>
