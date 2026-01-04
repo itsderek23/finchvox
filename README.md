@@ -49,7 +49,7 @@ uv run finchvox --help
 Try this starter prompt:
 
 ```
-I want you to follow the "Setp" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
+Follow the "Setup" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
 ```
 
 ### Step 1 - Enable Tracing in Your Pipecat Application
