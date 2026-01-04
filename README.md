@@ -1,11 +1,8 @@
-# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the local Voice AI debugger
+# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - the missing debugger for Voice AI apps
 
-Finchvox makes it easier to understand where your cascading Voice AI pipeline went wrong. It collects conversation audio and traces, presenting them in a single UI.
+Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTelemetry traces look impressive … yet explain nothing? If so, meet Finchvox, a local debugability tool purpose-built for Voice AI apps. 
 
-There are two main components:
-
-1. The Finchvox server - collects OpenTelemetry spans and audio data and serves the Finchvox UI.
-2. The Finchvox audio recorder - a Pipecat processor that records conversation audio for each client session.
+It unifies conversation audio and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Good luck convincing DataDog to add that!
 
 ## Prerequisites
 
@@ -15,10 +12,10 @@ There are two main components:
 ## Installation
 
 ```bash
-# Using uv (recommended)
+# uv
 uv add finchvox "pipecat-ai[tracing]"
 
-# Or with pip (PyPI)
+# Or with pip
 pip install finchvox "pipecat-ai[tracing]"
 ```
 
