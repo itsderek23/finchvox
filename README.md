@@ -4,6 +4,17 @@ Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTele
 
 Finchvox unifies conversation audio and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Good luck convincing DataDog to add that!
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage---finchvox-server)
+- [Setup](#setup)
+  - [✨ AI Install](#-let-your-ai-coding-agent-do-the-work)
+  - [Step 1 – Enable Tracing in Your Pipecat Application](#step-1---enable-tracing-in-your-pipecat-application)
+  - [Step 2 – Enable Audio Recording](#step-2---enable-audio-recording)
+- [Troubleshooting](#troubleshooting)
+
 ## Prerequisites
 
 - Python 3.10 or higher
@@ -31,18 +42,17 @@ For the list of available options, run:
 uv run finchvox --help
 ```
 
-## Setup - Enable Tracing in Your Pipecat Application
+## Setup
 
-### AI-led Steps
+### ✨ Let your AI coding agent do the work!
 
-Starter prompt:
+Try this starter prompt:
 
 ```
-I want you to follow the "Enable Tracing in Your Pipecat Application" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
+I want you to follow the "Setp" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
 ```
 
-
-### Manual Steps
+### Step 1 - Enable Tracing in Your Pipecat Application
 
 ```python
 import os
@@ -75,7 +85,7 @@ task = PipelineTask(
 
 For the full list of OpenTelemetry setup options, see the [Pipecat OpenTelemetry docs](https://docs.pipecat.ai/server/utilities/opentelemetry#overview).
 
-## Setup - Enable Audio Recording
+### Step 2 - Enable Audio Recording
 
 Import the audio recorder and add it to your pipeline:
 
