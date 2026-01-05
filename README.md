@@ -4,7 +4,7 @@ Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Do OpenTele
 
 Finchvox unifies conversation audio and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Good luck convincing DataDog to add that!
 
-<a href="./docs/demo.gif"><img src="./docs/screenshot.png" /></a>
+<a href="https://raw.githubusercontent.com/itsderek23/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
 
 ## Table of Contents
 
