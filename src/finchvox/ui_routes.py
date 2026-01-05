@@ -25,9 +25,13 @@ from finchvox.collector.config import (
 )
 
 
-# UI directory (still relative to project for development)
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-UI_DIR = PROJECT_ROOT / "ui"
+# UI directory - check package location first (when installed via pip/uv),
+# then fall back to development location
+UI_DIR = Path(__file__).parent / "ui"
+if not UI_DIR.exists():
+    # Fall back to development location (ui/ at project root)
+    PROJECT_ROOT = Path(__file__).parent.parent.parent
+    UI_DIR = PROJECT_ROOT / "ui"
 
 
 def register_ui_routes(app: FastAPI, data_dir: Path = None):

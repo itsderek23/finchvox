@@ -61,7 +61,9 @@
       "Bash(uv build:*)",
       "Bash(.venv/bin/finchvox:*)",
       "Bash(rm:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(unzip:*)",
+      "WebFetch(domain:hatch.pypa.io)"
     ]
   }
 }

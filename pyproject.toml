@@ -32,8 +32,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatchling.build.targets.wheel]
+[tool.hatch.build.targets.wheel]
 packages = ["src/finchvox"]
 
-[tool.hatchling.build.targets.wheel.force-include]
+[tool.hatch.build.targets.wheel.force-include]
 "ui" = "finchvox/ui"
