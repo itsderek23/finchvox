@@ -16,8 +16,6 @@ dependencies = [
     "python-multipart>=0.0.9",
     "aiofiles>=24.1.0",
     "aiohttp>=3.9.0",
-    "ruff>=0.14.10",
-    "twine>=6.2.0",
 ]
 
 [project.scripts]
@@ -27,6 +25,8 @@ finchvox = "finchvox.cli:main"
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "ruff>=0.14.10",
+    "twine>=6.2.0",
 ]
 
 [build-system]
