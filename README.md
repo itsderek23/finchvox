@@ -37,13 +37,15 @@ pip install finchvox "pipecat-ai[tracing]"
 
 ### ✨ Let your AI coding agent do the work!
 
-Try this starter prompt:
+With Claude running inside your Pipecat project directory, try this starter prompt:
 
 ```
 Follow the "Setup" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
 ```
 
 ### Step 1 - Enable Tracing in Your Pipecat Application
+
+Add the following to your bot (ie `bot.py`):
 
 ```python
 import os
@@ -78,7 +80,7 @@ For the full list of OpenTelemetry setup options, see the [Pipecat OpenTelemetry
 
 ### Step 2 - Enable Audio Recording
 
-Import the audio recorder and add it to your pipeline:
+Within your bot file (ie `bot.py`), import the audio recorder and add it to your pipeline:
 
 ```python
 from finchvox.audio_recorder import ConversationAudioRecorder
