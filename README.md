@@ -10,11 +10,11 @@ Finchvox unifies conversation audio and traces in a single UI, highlighting voic
 
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Usage](#usage---finchvox-server)
 - [Setup](#setup)
   - [✨ AI Install](#-let-your-ai-coding-agent-do-the-work)
   - [Step 1 – Enable Tracing in Your Pipecat Application](#step-1---enable-tracing-in-your-pipecat-application)
   - [Step 2 – Enable Audio Recording](#step-2---enable-audio-recording)
+- [Usage](#usage---finchvox-server)
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
@@ -30,18 +30,6 @@ uv add finchvox "pipecat-ai[tracing]"
 
 # Or with pip
 pip install finchvox "pipecat-ai[tracing]"
-```
-
-## Usage - Finchvox server
-
-```bash
-uv run finchvox start
-```
-
-For the list of available options, run:
-
-```bash
-uv run finchvox --help
 ```
 
 ## Setup
@@ -121,6 +109,18 @@ async def on_client_disconnected(transport, client):
     await audio_recorder.stop_recording()
 
     # Other cleanup logic...
+```
+
+## Usage - Finchvox server
+
+```bash
+uv run finchvox start
+```
+
+For the list of available options, run:
+
+```bash
+uv run finchvox --help
 ```
 
 ## Troubleshooting
