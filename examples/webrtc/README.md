@@ -14,7 +14,7 @@ See the main [README](../../README.md) for installation instructions.
 cp env.example .env
 ```
 
-Update the `.env` file with the required API creedentials.
+Update the `.env` file with the required API creds.
 
 ### 3. Setup venv and install Dependencies
 
