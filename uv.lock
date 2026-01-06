@@ -591,8 +591,6 @@ dependencies = [
     { name = "opentelemetry-proto" },
     { name = "protobuf" },
     { name = "python-multipart" },
-    { name = "ruff" },
-    { name = "twine" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -600,6 +598,8 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "twine" },
 ]
 
 [package.metadata]
@@ -615,8 +615,8 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "ruff", specifier = ">=0.14.10" },
-    { name = "twine", specifier = ">=6.2.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.10" },
+    { name = "twine", marker = "extra == 'dev'", specifier = ">=6.2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
 provides-extras = ["dev"]
