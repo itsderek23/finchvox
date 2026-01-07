@@ -876,7 +876,7 @@ wheels = [
 
 [[package]]
 name = "finchvox"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },

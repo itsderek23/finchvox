@@ -6,9 +6,6 @@
 
 import os
 import sys
-
-sys.path.insert(0, '/Users/derek/projects/finchvox/src')
-
 import finchvox
 from dotenv import load_dotenv
 from finchvox import FinchvoxProcessor
