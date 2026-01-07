@@ -32,31 +32,36 @@ pip install finchvox "pipecat-ai[tracing]"
 
 ## Setup
 
-Add the following to your bot (e.g., `bot.py`):
+1. Add the following to the top of your bot (e.g., `bot.py`):
 
 ```python
 import finchvox
 from finchvox import FinchvoxProcessor
 
 finchvox.init(service_name="my-voice-app")
+```
 
+2. Add `FinchvoxProcessor` to your pipeline, ensuring it comes after `transport.output()`:
+
+```python
 pipeline = Pipeline([
     # SST, LLM, TTS, etc. processors
+    transport.output(),
     FinchvoxProcessor(), # Must come after transport.output()
     context_aggregator.assistant(),
 ])
+```
 
+3. Initialize your `PipelineTask` with metrics, tracing and turn tracking enabled:
+
+```python
 task = PipelineTask(
     pipeline,
-    # Ensure enable_metrics=True
     params=PipelineParams(enable_metrics=True),
-    # Ensure enable_tracing + enable_turn_tracking are True
     enable_tracing=True,
     enable_turn_tracking=True,
 )
 ```
-
-That's it! The `FinchvoxProcessor` handles audio recording automatically.
 
 ## Usage - Finchvox server
 
