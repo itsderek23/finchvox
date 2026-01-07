@@ -12,9 +12,6 @@ _👇 Click the image for a short video:_
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Setup](#setup)
-  - [✨ AI Install](#-let-your-ai-coding-agent-do-the-work)
-  - [Step 1 – Enable Tracing in Your Pipecat Application](#step-1---enable-tracing-in-your-pipecat-application)
-  - [Step 2 – Enable Audio Recording](#step-2---enable-audio-recording)
 - [Usage](#usage---finchvox-server)
 - [Troubleshooting](#troubleshooting)
 
@@ -35,84 +32,31 @@ pip install finchvox "pipecat-ai[tracing]"
 
 ## Setup
 
-### ✨ Let your AI coding agent do the work!
-
-With Claude running inside your Pipecat project directory, try this starter prompt:
-
-```
-Follow the "Setup" instructions at https://github.com/itsderek23/finchvox/blob/main/README.md to setup tracing and audio recording for finchvox. 
-```
-
-### Step 1 - Enable Tracing in Your Pipecat Application
-
-Add the following to your bot (ie `bot.py`):
+Add the following to your bot (e.g., `bot.py`):
 
 ```python
-import os
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from pipecat.utils.tracing.setup import setup_tracing
-```
+import finchvox
+from finchvox import FinchvoxProcessor
 
-```python
-# Step 1: Initialize OpenTelemetry with your chosen exporter
-exporter = OTLPSpanExporter(
-    endpoint="http://localhost:4317",
-    insecure=True,
-)
+finchvox.init(service_name="my-voice-app")
 
-setup_tracing(
-    service_name="my-voice-app",
-    exporter=exporter,
-)
+pipeline = Pipeline([
+    # SST, LLM, TTS, etc. processors
+    FinchvoxProcessor(), # Must come after transport.output()
+    context_aggregator.assistant(),
+])
 
-# Step 2: Enable tracing in your PipelineTask
 task = PipelineTask(
     pipeline,
-    params=PipelineParams(
-        enable_metrics=True
-    ),
+    # Ensure enable_metrics=True
+    params=PipelineParams(enable_metrics=True),
+    # Ensure enable_tracing + enable_turn_tracking are True
     enable_tracing=True,
-    enable_turn_tracking=True
+    enable_turn_tracking=True,
 )
 ```
 
-For the full list of OpenTelemetry setup options, see the [Pipecat OpenTelemetry docs](https://docs.pipecat.ai/server/utilities/opentelemetry#overview).
-
-### Step 2 - Enable Audio Recording
-
-Within your bot file (ie `bot.py`), import the audio recorder and add it to your pipeline:
-
-```python
-from finchvox.audio_recorder import ConversationAudioRecorder
-```
-
-```python
-audio_recorder = ConversationAudioRecorder()
-
-pipeline = Pipeline(
-  [
-      # Other processors, like STT, LLM, TTS, etc.
-      audio_recorder.get_processor(),
-      # context_aggregator.assistant(),
-  ]
-)
-```
-
-Start and stop recording on client connect/disconnect events:
-
-```python
-@transport.event_handler("on_client_connected")
-async def on_client_connected(transport, client):
-    await audio_recorder.start_recording()
-
-    # Other initialization logic...
-
-@transport.event_handler("on_client_disconnected")
-async def on_client_disconnected(transport, client):
-    await audio_recorder.stop_recording()
-
-    # Other cleanup logic...
-```
+That's it! The `FinchvoxProcessor` handles audio recording automatically.
 
 ## Usage - Finchvox server
 

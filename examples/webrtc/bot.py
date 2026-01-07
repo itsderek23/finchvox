@@ -5,13 +5,14 @@
 #
 
 import os
-
-# FinchVox Logger and Audio Recorder
 import sys
 
+sys.path.insert(0, '/Users/derek/projects/finchvox/src')
+
+import finchvox
 from dotenv import load_dotenv
+from finchvox import FinchvoxProcessor
 from loguru import logger
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -30,33 +31,10 @@ from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams
-from pipecat.utils.tracing.setup import setup_tracing
-
-sys.path.insert(0, '/Users/derek/projects/finchvox/src')
-from pathlib import Path
-
-from finchvox.audio_recorder import ConversationAudioRecorder
-from opentelemetry import trace
 
 load_dotenv(override=True)
 
-IS_TRACING_ENABLED = bool(os.getenv("ENABLE_TRACING"))
-
-# Initialize tracing if enabled
-if IS_TRACING_ENABLED:
-    # Create the exporter
-    otlp_exporter = OTLPSpanExporter(
-        endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
-        insecure=True,
-    )
-
-    # Set up tracing with the exporter
-    setup_tracing(
-        service_name="pipecat-demo",
-        exporter=otlp_exporter,
-        console_export=bool(os.getenv("OTEL_CONSOLE_EXPORT")),
-    )
-    logger.info("OpenTelemetry tracing initialized")
+finchvox.init(service_name="pipecat-demo")
 
 
 async def fetch_weather_from_api(params: FunctionCallParams):
@@ -82,8 +60,6 @@ transport_params = {
 
 
 async def run_bot(transport: BaseTransport):
-    audio_recorder = ConversationAudioRecorder()
-
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
     tts = CartesiaTTSService(
@@ -137,7 +113,7 @@ async def run_bot(transport: BaseTransport):
             llm,
             tts,
             transport.output(),
-            audio_recorder.get_processor(),
+            FinchvoxProcessor(),
             context_aggregator.assistant(),
         ]
     )
@@ -148,25 +124,18 @@ async def run_bot(transport: BaseTransport):
             enable_metrics=True,
             enable_usage_metrics=True,
         ),
-        enable_tracing=IS_TRACING_ENABLED,
+        enable_tracing=True,
+        enable_turn_tracking=True,
     )
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
-        await audio_recorder.start_recording()
-
-        logger.info(f"Client connected")
-
-        # Kick off the conversation.
+        logger.info("Client connected")
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
-        logger.info(f"Client disconnected")
-
-        # Stop recording
-        await audio_recorder.stop_recording()
-
+        logger.info("Client disconnected")
         await task.cancel()
 
     runner = PipelineRunner(handle_sigint=False)

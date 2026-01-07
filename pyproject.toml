@@ -16,6 +16,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "aiofiles>=24.1.0",
     "aiohttp>=3.9.0",
+    "pipecat-ai[cartesia,daily,deepgram,silero]>=0.0.98",
+    "aiortc>=1.14.0",
 ]
 
 [project.scripts]
