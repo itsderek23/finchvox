@@ -31,8 +31,14 @@ class Trace:
         self._service_name: Optional[str] = None
         self._load_metadata()
 
+    def _extract_service_name(self, span: dict) -> Optional[str]:
+        resource = span.get("resource", {})
+        for attr in resource.get("attributes", []):
+            if attr.get("key") == "service.name":
+                return attr.get("value", {}).get("string_value")
+        return None
+
     def _load_metadata(self):
-        """Load span metadata from trace file."""
         span_count = 0
         min_start = None
         max_end = None
@@ -55,15 +61,8 @@ class Trace:
                             if max_end is None or end_nano > max_end:
                                 max_end = end_nano
 
-                        # Extract service name from first span with resource attributes
-                        if service_name is None and "resource" in span:
-                            resource = span["resource"]
-                            if "attributes" in resource:
-                                for attr in resource["attributes"]:
-                                    if attr.get("key") == "service.name":
-                                        value = attr.get("value", {})
-                                        service_name = value.get("string_value")
-                                        break
+                        if service_name is None:
+                            service_name = self._extract_service_name(span)
         except Exception as e:
             print(f"Error loading trace {self.trace_file}: {e}")
 
