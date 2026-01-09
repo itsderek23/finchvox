@@ -141,36 +141,20 @@ async def _handle_get_trace_raw(data_dir: Path, trace_id: str) -> JSONResponse:
     )
 
 
-async def _handle_get_logs(data_dir: Path, trace_id: str) -> JSONResponse:
-    """Get all logs for a specific trace."""
-    logs_dir = get_trace_logs_dir(data_dir, trace_id)
-    log_file = logs_dir / f"log_{trace_id}.jsonl"
-
-    if not log_file.exists():
-        return JSONResponse({"logs": []})
-
-    try:
-        logs = _read_jsonl_file(log_file)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
-
-    return JSONResponse({"logs": logs})
-
-
-async def _handle_get_exceptions(data_dir: Path, trace_id: str) -> JSONResponse:
-    """Get all exceptions for a specific trace."""
-    exceptions_dir = get_trace_exceptions_dir(data_dir, trace_id)
-    exceptions_file = exceptions_dir / f"exceptions_{trace_id}.jsonl"
-
-    if not exceptions_file.exists():
-        return JSONResponse({"exceptions": []})
+async def _handle_get_jsonl_records(
+    file_path: Path,
+    response_key: str
+) -> JSONResponse:
+    """Get records from a JSONL file for a specific trace."""
+    if not file_path.exists():
+        return JSONResponse({response_key: []})
 
     try:
-        exceptions = _read_jsonl_file(exceptions_file)
+        records = _read_jsonl_file(file_path)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading exceptions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading {response_key}: {str(e)}")
 
-    return JSONResponse({"exceptions": exceptions})
+    return JSONResponse({response_key: records})
 
 
 async def _handle_get_audio(
@@ -244,11 +228,13 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/logs/{trace_id}")
     async def get_logs(trace_id: str) -> JSONResponse:
-        return await _handle_get_logs(data_dir, trace_id)
+        log_file = get_trace_logs_dir(data_dir, trace_id) / f"log_{trace_id}.jsonl"
+        return await _handle_get_jsonl_records(log_file, "logs")
 
     @app.get("/api/exceptions/{trace_id}")
     async def get_exceptions(trace_id: str) -> JSONResponse:
-        return await _handle_get_exceptions(data_dir, trace_id)
+        exceptions_file = get_trace_exceptions_dir(data_dir, trace_id) / f"exceptions_{trace_id}.jsonl"
+        return await _handle_get_jsonl_records(exceptions_file, "exceptions")
 
     @app.get("/api/audio/{trace_id}")
     async def get_audio(trace_id: str, background_tasks: BackgroundTasks):
