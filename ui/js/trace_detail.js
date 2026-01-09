@@ -710,36 +710,24 @@ function traceDetailApp() {
             return date.toISOString().replace('T', ' ').substring(0, 23);
         },
 
-        formatAttributes(span) {
-            if (!span || !span.attributes) return '{}';
-
-            // Flatten attributes array to object
+        formatAttributesArray(attributes) {
+            if (!attributes) return '{}';
             const attrs = {};
-            span.attributes.forEach(attr => {
-                const value = attr.value.string_value ||
-                             attr.value.int_value ||
-                             attr.value.double_value ||
-                             attr.value.bool_value;
-                attrs[attr.key] = value;
+            attributes.forEach(attr => {
+                attrs[attr.key] = attr.value.string_value ||
+                                 attr.value.int_value ||
+                                 attr.value.double_value ||
+                                 attr.value.bool_value;
             });
-
             return JSON.stringify(attrs, null, 2);
         },
 
+        formatAttributes(span) {
+            return this.formatAttributesArray(span?.attributes);
+        },
+
         formatResourceAttributes(span) {
-            if (!span || !span.resource || !span.resource.attributes) return '{}';
-
-            // Flatten resource attributes array to object
-            const attrs = {};
-            span.resource.attributes.forEach(attr => {
-                const value = attr.value.string_value ||
-                             attr.value.int_value ||
-                             attr.value.double_value ||
-                             attr.value.bool_value;
-                attrs[attr.key] = value;
-            });
-
-            return JSON.stringify(attrs, null, 2);
+            return this.formatAttributesArray(span?.resource?.attributes);
         },
 
         getTranscriptText(span) {
