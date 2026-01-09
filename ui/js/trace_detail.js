@@ -110,86 +110,74 @@ function traceDetailApp() {
             }
         },
 
-        buildWaterfallTree() {
-            // Step 1: Build parent-child map
-            const childrenMap = {}; // spanId -> [child spans]
+        buildSpanHierarchy() {
+            const childrenMap = {};
             const rootSpans = [];
-            const spanIds = new Set();
-
-            // Track all span IDs for orphan detection
-            this.spans.forEach(span => {
-                spanIds.add(span.span_id_hex);
-            });
+            const spanIds = new Set(this.spans.map(s => s.span_id_hex));
 
             this.spans.forEach(span => {
                 const parentId = span.parent_span_id_hex;
+                const isRootOrOrphan = !parentId || !spanIds.has(parentId);
 
-                // Check if this is a root span or orphaned span
-                const isOrphan = parentId && !spanIds.has(parentId);
-                const isRoot = !parentId;
-
-                if (isRoot || isOrphan) {
+                if (isRootOrOrphan) {
                     rootSpans.push(span);
-                } else if (parentId) {
-                    if (!childrenMap[parentId]) {
-                        childrenMap[parentId] = [];
-                    }
+                } else {
+                    if (!childrenMap[parentId]) childrenMap[parentId] = [];
                     childrenMap[parentId].push(span);
                 }
             });
 
-            // Step 2: Sort children by start time
             Object.values(childrenMap).forEach(children => {
                 children.sort((a, b) => a.startMs - b.startMs);
             });
+            rootSpans.sort((a, b) => a.startMs - b.startMs);
 
-            // Step 3: Traverse tree depth-first and flatten to display order
-            this.waterfallSpans = [];
+            return { childrenMap, rootSpans };
+        },
+
+        flattenSpanTree(rootSpans, childrenMap) {
+            const result = [];
 
             const traverse = (span, depth) => {
                 span.depth = depth;
                 span.children = childrenMap[span.span_id_hex] || [];
                 span.childCount = span.children.length;
+                result.push(span);
 
-                // Add this span to the display list
-                this.waterfallSpans.push(span);
-
-                // If expanded, add children recursively
-                const isExpanded = this.expandedSpanIds.has(span.span_id_hex);
-                if (isExpanded && span.children.length > 0) {
+                if (this.expandedSpanIds.has(span.span_id_hex)) {
                     span.children.forEach(child => traverse(child, depth + 1));
                 }
             };
 
-            // Step 4: Start traversal from root spans (sorted by start time)
-            rootSpans.sort((a, b) => a.startMs - b.startMs);
             rootSpans.forEach(span => traverse(span, 0));
+            return result;
+        },
 
-            // Step 5: Initialize expansion state (collapsed by default - only show conversation and turns)
-            // Only run this on first load, not on subsequent rebuilds
-            if (!this.expansionInitialized) {
-                let addedExpansions = false;
+        initializeDefaultExpansion(childrenMap) {
+            if (this.expansionInitialized) return false;
 
-                this.spans.forEach(span => {
-                    // Only expand conversation spans by default
-                    // This shows conversation and its children (turns), but not children of turns
-                    if (span.name === 'conversation') {
-                        const children = childrenMap[span.span_id_hex] || [];
-                        if (children.length > 0 && !this.expandedSpanIds.has(span.span_id_hex)) {
-                            this.expandedSpanIds.add(span.span_id_hex);
-                            addedExpansions = true;
-                        }
+            let addedExpansions = false;
+            this.spans
+                .filter(span => span.name === 'conversation')
+                .forEach(span => {
+                    const children = childrenMap[span.span_id_hex] || [];
+                    if (children.length > 0 && !this.expandedSpanIds.has(span.span_id_hex)) {
+                        this.expandedSpanIds.add(span.span_id_hex);
+                        addedExpansions = true;
                     }
                 });
 
-                // If we just initialized spans as expanded, rebuild the tree
-                if (addedExpansions) {
-                    this.waterfallSpans = [];
-                    rootSpans.forEach(span => traverse(span, 0));
-                }
+            this.expansionInitialized = true;
+            this.isWaterfallExpanded = false;
+            return addedExpansions;
+        },
 
-                this.expansionInitialized = true;
-                this.isWaterfallExpanded = false; // Start in collapsed state
+        buildWaterfallTree() {
+            const { childrenMap, rootSpans } = this.buildSpanHierarchy();
+            this.waterfallSpans = this.flattenSpanTree(rootSpans, childrenMap);
+
+            if (this.initializeDefaultExpansion(childrenMap)) {
+                this.waterfallSpans = this.flattenSpanTree(rootSpans, childrenMap);
             }
         },
 
