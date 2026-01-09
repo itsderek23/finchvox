@@ -809,6 +809,10 @@ function traceDetailApp() {
         },
 
         // Get all tool calls from the input attribute
+        hasToolCalls(msg) {
+            return msg.role === 'assistant' && Array.isArray(msg.tool_calls);
+        },
+
         getToolCalls(span) {
             if (!span || span.name !== 'llm') return [];
 
@@ -818,18 +822,8 @@ function traceDetailApp() {
             try {
                 const messages = JSON.parse(inputValue);
                 if (!Array.isArray(messages)) return [];
-
-                const toolCalls = [];
-                // Iterate through all messages and collect tool calls
-                messages.forEach(msg => {
-                    if (msg.role === 'assistant' && msg.tool_calls && Array.isArray(msg.tool_calls)) {
-                        toolCalls.push(...msg.tool_calls);
-                    }
-                });
-
-                return toolCalls;
+                return messages.filter(m => this.hasToolCalls(m)).flatMap(m => m.tool_calls);
             } catch (e) {
-                console.error('Error parsing tool calls:', e);
                 return [];
             }
         },
@@ -984,46 +978,35 @@ function traceDetailApp() {
             this.handleRowClick(span);
         },
 
+        isDataReady() {
+            return this.spans?.length > 0 && this.duration;
+        },
+
+        getChildSpansByName(parentSpan, name) {
+            return this.spans.filter(s => s.parent_span_id_hex === parentSpan.span_id_hex && s.name === name);
+        },
+
+        collectTextFromSpans(spans, textGetter) {
+            return spans.map(s => textGetter(s)).filter(Boolean).join(' ');
+        },
+
+        buildTurnChunk(turn) {
+            const sttChildren = this.getChildSpansByName(turn, 'stt');
+            const llmChildren = this.getChildSpansByName(turn, 'llm');
+
+            return {
+                span_id_hex: turn.span_id_hex,
+                span: turn,
+                humanText: this.collectTextFromSpans(sttChildren, s => this.getTranscriptText(s)),
+                botText: this.collectTextFromSpans(llmChildren, s => this.getOutputText(s)),
+                style: this.getTimelineBarStyle(turn),
+                wasInterrupted: this.wasInterrupted(turn)
+            };
+        },
+
         getTurnChunks() {
-            // Return empty array if no data or audio not ready
-            if (!this.spans || this.spans.length === 0 || !this.duration) {
-                return [];
-            }
-
-            // Find all turn spans
-            const turnSpans = this.spans.filter(s => s.name === 'turn');
-
-            // Map each turn to a chunk object with text and positioning
-            return turnSpans.map(turn => {
-                // Find all STT and LLM children
-                const children = this.spans.filter(s => s.parent_span_id_hex === turn.span_id_hex);
-                const sttChildren = children.filter(c => c.name === 'stt');
-                const llmChildren = children.filter(c => c.name === 'llm');
-
-                // Concatenate text from all STT spans
-                const humanText = sttChildren
-                    .map(child => this.getTranscriptText(child))
-                    .filter(text => text) // Remove empty strings
-                    .join(' ');
-
-                // Concatenate text from all LLM spans
-                const botText = llmChildren
-                    .map(child => this.getOutputText(child))
-                    .filter(text => text) // Remove empty strings
-                    .join(' ');
-
-                // Calculate positioning (reuses existing method)
-                const style = this.getTimelineBarStyle(turn);
-
-                return {
-                    span_id_hex: turn.span_id_hex,
-                    span: turn,  // Store reference for hover marker
-                    humanText: humanText,
-                    botText: botText,
-                    style: style,  // { left: "X%", width: "Y%" }
-                    wasInterrupted: this.wasInterrupted(turn)
-                };
-            });
+            if (!this.isDataReady()) return [];
+            return this.spans.filter(s => s.name === 'turn').map(turn => this.buildTurnChunk(turn));
         },
 
         // Real-time polling methods
