@@ -535,64 +535,39 @@ function traceDetailApp() {
             });
         },
 
-        navigateToNextSpan() {
+        navigateSpan(direction) {
             if (this.waterfallSpans.length === 0) return;
 
             const panelWasOpen = this.selectedSpan !== null;
             const currentSpan = this.highlightedSpan || this.selectedSpan;
 
+            let targetSpan;
             if (!currentSpan) {
-                // No highlight, start at first span
-                const nextSpan = this.waterfallSpans[0];
-                this.highlightedSpan = nextSpan;
-                if (panelWasOpen) {
-                    this.selectedSpan = nextSpan;
-                }
-                this.navigateToSpan(nextSpan);  // Visual feedback only, no audio seek
+                targetSpan = direction === 1
+                    ? this.waterfallSpans[0]
+                    : this.waterfallSpans[this.waterfallSpans.length - 1];
             } else {
-                // Find current index and move to next
                 const currentIndex = this.waterfallSpans.findIndex(
                     s => s.span_id_hex === currentSpan.span_id_hex
                 );
-                if (currentIndex !== -1 && currentIndex < this.waterfallSpans.length - 1) {
-                    const nextSpan = this.waterfallSpans[currentIndex + 1];
-                    this.highlightedSpan = nextSpan;
-                    if (panelWasOpen) {
-                        this.selectedSpan = nextSpan;
-                    }
-                    this.navigateToSpan(nextSpan);  // Visual feedback only, no audio seek
-                }
+                const targetIndex = currentIndex + direction;
+                if (targetIndex < 0 || targetIndex >= this.waterfallSpans.length) return;
+                targetSpan = this.waterfallSpans[targetIndex];
             }
+
+            this.highlightedSpan = targetSpan;
+            if (panelWasOpen) {
+                this.selectedSpan = targetSpan;
+            }
+            this.navigateToSpan(targetSpan);
+        },
+
+        navigateToNextSpan() {
+            this.navigateSpan(1);
         },
 
         navigateToPreviousSpan() {
-            if (this.waterfallSpans.length === 0) return;
-
-            const panelWasOpen = this.selectedSpan !== null;
-            const currentSpan = this.highlightedSpan || this.selectedSpan;
-
-            if (!currentSpan) {
-                // No highlight, start at last span
-                const prevSpan = this.waterfallSpans[this.waterfallSpans.length - 1];
-                this.highlightedSpan = prevSpan;
-                if (panelWasOpen) {
-                    this.selectedSpan = prevSpan;
-                }
-                this.navigateToSpan(prevSpan);  // Visual feedback only, no audio seek
-            } else {
-                // Find current index and move to previous
-                const currentIndex = this.waterfallSpans.findIndex(
-                    s => s.span_id_hex === currentSpan.span_id_hex
-                );
-                if (currentIndex > 0) {
-                    const prevSpan = this.waterfallSpans[currentIndex - 1];
-                    this.highlightedSpan = prevSpan;
-                    if (panelWasOpen) {
-                        this.selectedSpan = prevSpan;
-                    }
-                    this.navigateToSpan(prevSpan);  // Visual feedback only, no audio seek
-                }
-            }
+            this.navigateSpan(-1);
         },
 
         navigateToSpan(span) {
