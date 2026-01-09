@@ -454,83 +454,40 @@ function traceDetailApp() {
             this.wavesurfer.seekTo(progress);
         },
 
-        initKeyboardShortcuts() {
-            // Prevent adding listener multiple times
-            if (window.__keyboardShortcutsInitialized) {
-                return;
+        isUserTyping() {
+            const activeElement = document.activeElement;
+            return activeElement && (
+                activeElement.tagName === 'INPUT' ||
+                activeElement.tagName === 'TEXTAREA' ||
+                activeElement.contentEditable === 'true'
+            );
+        },
+
+        handleKeydown(event) {
+            if (this.isUserTyping()) return;
+
+            const handlers = {
+                ' ': () => this.togglePlay(),
+                'ArrowLeft': () => this.skipBackward(5),
+                'ArrowRight': () => this.skipForward(5),
+                'ArrowUp': () => this.navigateToPreviousSpan(),
+                'ArrowDown': () => this.navigateToNextSpan(),
+                'Escape': () => this.selectedSpan && this.closePanel(),
+                'Enter': () => this.highlightedSpan && this.selectSpan(this.highlightedSpan, true)
+            };
+
+            const handler = handlers[event.key];
+            if (handler) {
+                event.preventDefault();
+                handler();
             }
-            window.__keyboardShortcutsInitialized = true;
+        },
 
-            // Store reference to component context for event listener
-            const self = this;
+        initKeyboardShortcuts() {
+            if (this.keyboardHandler) return;
 
-            // Add global keyboard event listener for YouTube-style controls
-            document.addEventListener('keydown', (event) => {
-                // Check if user is typing in an input field
-                const activeElement = document.activeElement;
-                const isTyping = activeElement && (
-                    activeElement.tagName === 'INPUT' ||
-                    activeElement.tagName === 'TEXTAREA' ||
-                    activeElement.contentEditable === 'true'
-                );
-
-                // Don't process shortcuts if user is typing
-                if (isTyping) return;
-
-                // Handle keyboard shortcuts
-                switch (event.key) {
-                    case ' ': // Space - Play/Pause
-                        event.preventDefault();
-                        if (self.wavesurfer) {
-                            self.wavesurfer.playPause();
-                        }
-                        break;
-
-                    case 'ArrowLeft': // Left Arrow - Skip backward 5 seconds
-                        event.preventDefault();
-                        if (self.wavesurfer && self.duration) {
-                            const currentTime = self.wavesurfer.getCurrentTime();
-                            const newTime = Math.max(0, currentTime - 5);
-                            const progress = newTime / self.duration;
-                            self.wavesurfer.seekTo(progress);
-                        }
-                        break;
-
-                    case 'ArrowRight': // Right Arrow - Skip forward 5 seconds
-                        event.preventDefault();
-                        if (self.wavesurfer && self.duration) {
-                            const currentTime = self.wavesurfer.getCurrentTime();
-                            const newTime = Math.min(self.duration, currentTime + 5);
-                            const progress = newTime / self.duration;
-                            self.wavesurfer.seekTo(progress);
-                        }
-                        break;
-
-                    case 'ArrowUp': // Up Arrow - Navigate to previous span
-                        event.preventDefault();
-                        self.navigateToPreviousSpan();
-                        break;
-
-                    case 'ArrowDown': // Down Arrow - Navigate to next span
-                        event.preventDefault();
-                        self.navigateToNextSpan();
-                        break;
-
-                    case 'Escape': // Escape - Close details panel
-                        if (self.selectedSpan) {
-                            event.preventDefault();
-                            self.closePanel();
-                        }
-                        break;
-
-                    case 'Enter': // Enter - Select highlighted span (open panel and seek)
-                        event.preventDefault();
-                        if (self.highlightedSpan) {
-                            self.selectSpan(self.highlightedSpan, true);
-                        }
-                        break;
-                }
-            });
+            this.keyboardHandler = (event) => this.handleKeydown(event);
+            document.addEventListener('keydown', this.keyboardHandler);
         },
 
         initCleanup() {
