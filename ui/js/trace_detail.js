@@ -74,37 +74,42 @@ function traceDetailApp() {
             this.initCleanup();
         },
 
+        enrichSpan(span) {
+            return {
+                ...span,
+                startMs: Number(span.start_time_unix_nano) / 1_000_000,
+                endMs: Number(span.end_time_unix_nano) / 1_000_000,
+                durationMs: (Number(span.end_time_unix_nano) - Number(span.start_time_unix_nano)) / 1_000_000
+            };
+        },
+
+        updateTimelineBounds() {
+            if (this.spans.length === 0) return;
+            this.minTime = Math.min(...this.spans.map(s => s.startMs));
+            this.maxTime = Math.max(...this.spans.map(s => s.endMs));
+        },
+
+        extractServiceName() {
+            for (const span of this.spans) {
+                const attrs = span.resource?.attributes;
+                if (!attrs) continue;
+                const serviceAttr = attrs.find(attr => attr.key === 'service.name');
+                if (serviceAttr?.value?.string_value) {
+                    this.serviceName = serviceAttr.value.string_value;
+                    return;
+                }
+            }
+        },
+
         async loadTraceData() {
             try {
                 const response = await fetch(`/api/trace/${this.traceId}`);
                 const data = await response.json();
 
-                // Parse and enrich spans
-                this.spans = data.spans.map(span => ({
-                    ...span,
-                    startMs: Number(span.start_time_unix_nano) / 1_000_000,
-                    endMs: Number(span.end_time_unix_nano) / 1_000_000,
-                    durationMs: (Number(span.end_time_unix_nano) - Number(span.start_time_unix_nano)) / 1_000_000
-                }));
-
-                // Extract service name from first span with resource attributes
-                for (const span of this.spans) {
-                    if (span.resource && span.resource.attributes) {
-                        const serviceAttr = span.resource.attributes.find(attr => attr.key === 'service.name');
-                        if (serviceAttr && serviceAttr.value && serviceAttr.value.string_value) {
-                            this.serviceName = serviceAttr.value.string_value;
-                            break;
-                        }
-                    }
-                }
-
-                // Calculate timeline bounds
-                this.minTime = Math.min(...this.spans.map(s => s.startMs));
-                this.maxTime = Math.max(...this.spans.map(s => s.endMs));
-
-                // Build waterfall tree structure
+                this.spans = data.spans.map(span => this.enrichSpan(span));
+                this.extractServiceName();
+                this.updateTimelineBounds();
                 this.buildWaterfallTree();
-
             } catch (error) {
                 console.error('Failed to load trace:', error);
             }
@@ -1056,74 +1061,53 @@ function traceDetailApp() {
             }
         },
 
+        isConversationComplete(data) {
+            const conversationSpan = data.spans.find(s => s.name === 'conversation');
+            return conversationSpan && conversationSpan.end_time_unix_nano;
+        },
+
+        isTraceAbandoned(data) {
+            if (!data.last_span_time) return false;
+            const lastSpanMs = Number(data.last_span_time) / 1_000_000;
+            const tenMinutesMs = 10 * 60 * 1000;
+            return (Date.now() - lastSpanMs) > tenMinutesMs;
+        },
+
+        mergeNewSpans(data) {
+            if (data.spans.length <= this.lastSpanCount) return false;
+
+            const existingSpanIds = new Set(this.spans.map(s => s.span_id_hex));
+            const newSpans = data.spans
+                .filter(s => !existingSpanIds.has(s.span_id_hex))
+                .map(s => this.enrichSpan(s));
+
+            this.spans.push(...newSpans);
+            this.updateTimelineBounds();
+            this.lastSpanCount = this.spans.length;
+            return newSpans.length > 0;
+        },
+
         async pollForSpans() {
             try {
                 const response = await fetch(`/api/trace/${this.traceId}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
                 this.consecutiveErrors = 0;
 
-                // Check stopping condition 1: Conversation complete (if conversation span exists)
-                const conversationSpan = data.spans.find(s => s.name === 'conversation');
-                if (conversationSpan && conversationSpan.end_time_unix_nano) {
-                    console.log('Conversation complete, stopping polling');
+                if (this.isConversationComplete(data) || this.isTraceAbandoned(data)) {
                     this.stopPolling();
                     return;
                 }
 
-                // Check stopping condition 2: Trace abandoned (10 minutes since last span)
-                if (data.last_span_time) {
-                    const lastSpanMs = Number(data.last_span_time) / 1_000_000;
-                    const nowMs = Date.now();
-                    const tenMinutesMs = 10 * 60 * 1000;
-
-                    if ((nowMs - lastSpanMs) > tenMinutesMs) {
-                        console.log('Trace abandoned (>10 min since last span), stopping polling');
-                        this.stopPolling();
-                        return;
-                    }
-                }
-
-                // Check if new spans arrived
-                if (data.spans.length > this.lastSpanCount) {
-                    console.log(`New spans detected: ${data.spans.length - this.lastSpanCount} new spans`);
-
-                    // Get new spans by comparing span IDs
-                    const existingSpanIds = new Set(this.spans.map(s => s.span_id_hex));
-                    const newSpans = data.spans.filter(s => !existingSpanIds.has(s.span_id_hex));
-
-                    // Add computed properties to new spans (same as loadTraceData)
-                    newSpans.forEach(span => {
-                        span.startMs = Number(span.start_time_unix_nano) / 1_000_000;
-                        span.endMs = Number(span.end_time_unix_nano) / 1_000_000;
-                        span.durationMs = (Number(span.end_time_unix_nano) - Number(span.start_time_unix_nano)) / 1_000_000;
-                        this.spans.push(span);
-                    });
-
-                    // Update timeline bounds
-                    this.minTime = Math.min(...this.spans.map(s => s.startMs));
-                    this.maxTime = Math.max(...this.spans.map(s => s.endMs));
-
-                    // Rebuild waterfall tree with new spans
+                if (this.mergeNewSpans(data)) {
                     this.buildWaterfallTree();
-
-                    // Reload audio waveform (synchronized with span update)
                     await this.reloadAudioIfNotPlaying();
-
-                    // Update count
-                    this.lastSpanCount = this.spans.length;
                 }
-
             } catch (error) {
                 console.error('Error polling for spans:', error);
                 this.consecutiveErrors++;
-
-                // Stop polling after 3 consecutive errors
                 if (this.consecutiveErrors >= 3) {
-                    console.error('Too many consecutive errors, stopping polling');
                     this.stopPolling();
                 }
             }
