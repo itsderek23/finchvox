@@ -38,6 +38,22 @@ class Trace:
                 return attr.get("value", {}).get("string_value")
         return None
 
+    def _update_min_start(self, current: Optional[int], span: dict) -> Optional[int]:
+        if "start_time_unix_nano" not in span:
+            return current
+        start_nano = int(span["start_time_unix_nano"])
+        if current is None or start_nano < current:
+            return start_nano
+        return current
+
+    def _update_max_end(self, current: Optional[int], span: dict) -> Optional[int]:
+        if "end_time_unix_nano" not in span:
+            return current
+        end_nano = int(span["end_time_unix_nano"])
+        if current is None or end_nano > current:
+            return end_nano
+        return current
+
     def _load_metadata(self):
         span_count = 0
         min_start = None
@@ -50,17 +66,8 @@ class Trace:
                     if line.strip():
                         span = json.loads(line)
                         span_count += 1
-
-                        if "start_time_unix_nano" in span:
-                            start_nano = int(span["start_time_unix_nano"])
-                            if min_start is None or start_nano < min_start:
-                                min_start = start_nano
-
-                        if "end_time_unix_nano" in span:
-                            end_nano = int(span["end_time_unix_nano"])
-                            if max_end is None or end_nano > max_end:
-                                max_end = end_nano
-
+                        min_start = self._update_min_start(min_start, span)
+                        max_end = self._update_max_end(max_end, span)
                         if service_name is None:
                             service_name = self._extract_service_name(span)
         except Exception as e:
