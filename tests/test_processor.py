@@ -18,11 +18,16 @@ def reset_finchvox_state():
 
 @pytest.fixture
 def mock_setup_info():
+    def close_coro_and_return_mock(coro, name=None):
+        coro.close()
+        return AsyncMock()
+
     setup = Mock()
     setup.clock = Mock()
     setup.clock.get_time = Mock(return_value=0)
     setup.task_manager = Mock()
-    setup.task_manager.create_task = Mock(return_value=AsyncMock())
+    setup.task_manager.create_task = Mock(side_effect=close_coro_and_return_mock)
+    setup.task_manager.cancel_task = AsyncMock()
     setup.observer = None
     return setup
 
@@ -57,6 +62,8 @@ async def test_pipeline_continues_when_init_not_called(reset_finchvox_state, moc
     assert processor._disabled is True
     assert "finchvox.init() was not called" in capture_logs.getvalue()
 
+    await processor.cleanup()
+
 
 @pytest.mark.asyncio
 async def test_pipeline_continues_when_tracing_disabled(reset_finchvox_state, mock_setup_info, capture_logs):
@@ -79,6 +86,8 @@ async def test_pipeline_continues_when_tracing_disabled(reset_finchvox_state, mo
     assert pushed_frames[0][0] is start_frame
     assert processor._disabled is True
     assert "FinchvoxProcessor requires tracing to be enabled" in capture_logs.getvalue()
+
+    await processor.cleanup()
 
 
 @pytest.mark.asyncio
@@ -126,6 +135,8 @@ async def test_pipeline_continues_when_collector_unreachable(reset_finchvox_stat
     new_logs = log_after[len(log_before):]
     assert "Could not reach finchvox collector" not in new_logs
 
+    await processor.cleanup()
+
 
 @pytest.mark.asyncio
 async def test_end_frame_flows_through_when_disabled(reset_finchvox_state, mock_setup_info):
@@ -150,3 +161,5 @@ async def test_end_frame_flows_through_when_disabled(reset_finchvox_state, mock_
     assert len(pushed_frames) == 2
     assert pushed_frames[0][0] is start_frame
     assert pushed_frames[1][0] is end_frame
+
+    await processor.cleanup()
