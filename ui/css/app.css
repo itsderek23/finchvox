@@ -63,87 +63,8 @@ button:focus-visible {
 }
 
 /* ==========================================
-   7. WATERFALL VIEW
+   7. TIMELINE BAR (span type colors)
    ========================================== */
-.waterfall-container {
-    overflow-y: hidden;
-    overflow-x: visible;
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 320px);
-}
-
-.waterfall-toolbar {
-    padding: 1rem 2rem 0.75rem 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.waterfall-body {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: visible;
-    padding: 0rem 2rem 0 2rem;
-}
-
-.waterfall-row {
-    height: var(--waterfall-row-height);
-    cursor: pointer;
-    transition: background 0.15s ease;
-    border-left: 1px solid transparent;
-
-}
-
-.waterfall-row:nth-child(even) {
-    background: var(--zebra-stripe);
-}
-
-.waterfall-row:hover {
-    background: rgba(168, 85, 247, 0.08);
-}
-
-.waterfall-row.selected {
-    background: rgba(168, 85, 247, 0.15);
-    border-left: 1px solid var(--accent);
-}
-
-.expand-toggle {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0px 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    transition: color 0.2s;
-    z-index: 2;
-    margin-left: -22px;
-}
-
-.expand-toggle:hover {
-    color: var(--text-primary);
-}
-
-.expand-toggle svg {
-    width: 12px;
-    height: 12px;
-    transition: transform 0.2s;
-}
-
-.expand-toggle.expanded svg {
-    transform: rotate(90deg);
-}
-
-.waterfall-timeline-track {
-    position: relative;
-    padding: 0 16px 0 32px;
-    display: flex;
-    align-items: center;
-    height: 100%;
-}
-
 .timeline-bar {
     position: absolute;
     height: 22px;
@@ -169,34 +90,6 @@ button:focus-visible {
 .selected .timeline-bar {
     border: 1px solid white;
     z-index: 10;
-}
-
-.bar-label {
-    color: white;
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-    letter-spacing: 0.3px;
-    padding: 0 8px 0 4px;
-}
-
-.bar-duration {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 10px;
-    font-family: 'SF Mono', 'Monaco', monospace;
-    white-space: nowrap;
-}
-
-.span-stt {
-    background: var(--span-stt);
-}
-
-.span-llm {
-    background: var(--span-llm);
-}
-
-.span-tts {
-    background: var(--span-tts);
 }
 
 /* ==========================================
