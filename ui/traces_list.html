@@ -28,43 +28,43 @@
         <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto">
         <span class="text-white/70">Traces</span> <span>/</span> <span x-text="`${traces.length} traces`"></span>
     </div>
-    <main class="traces-list-view">
-        <div x-show="traces.length === 0" class="error" style="margin:100px 2rem 1rem 2rem;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="error-icon">
+    <main class="flex-1 overflow-auto px-8 pb-16">
+        <div x-show="traces.length === 0" class="flex items-center gap-3 p-4 px-5 mt-24 mx-0 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
             <span>
-                Is this thing on? No traces have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank">troubleshooting guide</a>.
-                <div x-show="dataDir && dataDir.length > 0" class="secondary-text" style="display:block; margin-top:0.5em;">
-                    Data directory: <span class="mono" x-text="dataDir"></span>
+                Is this thing on? No traces have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
+                <div x-show="dataDir && dataDir.length > 0" class="block mt-2 text-white/70">
+                    Data directory: <span class="font-mono text-xs" x-text="dataDir"></span>
                 </div>
             </span>
         </div>
 
-        <table class="traces-table" x-show="traces.length > 0">
-            <thead>
+        <table class="w-full border-collapse bg-[#050507] rounded-sm overflow-hidden mt-4" x-show="traces.length > 0">
+            <thead class="bg-white/5">
                 <tr>
-                    <th>Service Name</th>
-                    <th>Trace ID</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Duration</th>
-                    <th>Spans</th>
-                    <th></th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Service Name</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Trace ID</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Start Time</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">End Time</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Duration</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Spans</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70"></th>
                 </tr>
             </thead>
             <tbody>
                 <template x-for="trace in traces" :key="trace.trace_id">
-                    <tr class="trace-row">
-                        <td x-text="trace.service_name || '-'"></td>
-                        <td class="trace-id">
-                            <a class="mono" :href="`/traces/${trace.trace_id}`" x-text="trace.trace_id"></a>
+                    <tr class="border-b border-white/10 transition-colors even:bg-[#0f0f0f] hover:bg-amber-500/[0.08]">
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.service_name || '-'"></td>
+                        <td class="py-4 px-6 text-white/70 font-mono text-[13px]">
+                            <a class="text-amber-400 underline hover:text-amber-300 transition-colors" :href="`/traces/${trace.trace_id}`" x-text="trace.trace_id"></a>
                         </td>
-                        <td x-text="formatDate(trace.start_time)"></td>
-                        <td x-text="formatDate(trace.end_time)"></td>
-                        <td x-text="formatDuration(trace.duration_ms)"></td>
-                        <td x-text="trace.span_count"></td>
-                        <td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.start_time)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.end_time)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(trace.duration_ms)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.span_count"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm">
 
                         </td>
                     </tr>

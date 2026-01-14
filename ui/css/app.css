@@ -532,64 +532,6 @@ button:focus-visible {
     color: #10b981;
 }
 
-/* ==========================================
-   9. TRACES LIST VIEW
-   ========================================== */
-.traces-list-view {
-    flex: 1;
-    overflow: auto;
-    padding: 0 2rem 4rem 2rem;
-}
-
-.empty-traces {
-    margin-top: 2rem;
-}
-
-.traces-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--bg-primary);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 1rem;
-}
-
-.traces-table thead {
-    background: var(--bg-tertiary);
-}
-
-.traces-table th {
-    text-align: left;
-    padding: 1rem 1.5rem;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-}
-
-.trace-row {
-    border-bottom: 1px solid var(--border);
-    transition: background 0.2s;
-}
-
-.trace-row:nth-child(even) {
-    background: var(--zebra-stripe);
-}
-
-.trace-row:hover {
-    background: rgba(168, 85, 247, 0.08);
-}
-
-.trace-row td {
-    padding: 1rem 1.5rem;
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.trace-id {
-    font-family: 'SF Mono', 'Monaco', monospace;
-    font-size: 13px;
-}
 
 /* ==========================================
    10. SCROLLBAR STYLES
