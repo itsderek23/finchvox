@@ -226,96 +226,96 @@
         </div><!-- End main-content -->
 
         <!-- Side Panel (span details) -->
-        <aside class="details-panel"
+        <aside class="fixed top-12 right-0 bottom-0 w-[400px] bg-[#050507] border-l border-t border-white/10 overflow-y-auto z-[100] shadow-[-4px_0_20px_rgba(0,0,0,0.5)]"
            x-show="isPanelOpen"
-           x-transition:enter="slide-in-right"
-           x-transition:enter-start="slide-in-right-start"
-           x-transition:enter-end="slide-in-right-end"
-           x-transition:leave="slide-out-right"
-           x-transition:leave-start="slide-out-right-start"
-           x-transition:leave-end="slide-out-right-end">
-            <div class="panel-header">
-                <h3 x-text="selectedSpan?.name">Span Details</h3>
-                <button @click="closePanel()" class="close-button" title="ESC">✕</button>
+           x-transition:enter="transition ease-out duration-300"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-200"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full">
+            <div class="flex justify-between items-center py-2 px-8 border-b border-white/10 sticky top-0 z-10 bg-[#050507]">
+                <h3 class="text-sm font-semibold tracking-wide" x-text="selectedSpan?.name">Span Details</h3>
+                <button @click="closePanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
             </div>
-            <div class="panel-content">
-                <div class="detail-grid">
-                    <div class="detail-row">
-                        <label>Duration:</label>
-                        <span x-text="formatSpanDuration(selectedSpan)"></span>
+            <div class="p-8">
+                <div class="grid gap-4 mb-8">
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Duration:</label>
+                        <span class="text-white text-xs" x-text="formatSpanDuration(selectedSpan)"></span>
                     </div>
-                    <div class="detail-row" x-show="getTTFB(selectedSpan) !== null">
-                        <label title="Time to First Byte">TTFB</label>
-                        <span x-text="formatTTFB(selectedSpan)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4" x-show="getTTFB(selectedSpan) !== null">
+                        <label class="text-white/40 font-semibold text-xs" title="Time to First Byte">TTFB</label>
+                        <span class="text-white text-xs" x-text="formatTTFB(selectedSpan)"></span>
                     </div>
-                    <div class="detail-row" x-show="getUserBotLatency(selectedSpan) !== null">
-                        <label>User ↔ Bot Latency</label>
-                        <span x-html="formatUserBotLatency(selectedSpan)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4" x-show="getUserBotLatency(selectedSpan) !== null">
+                        <label class="text-white/40 font-semibold text-xs">User ↔ Bot Latency</label>
+                        <span class="text-white text-xs" x-html="formatUserBotLatency(selectedSpan)"></span>
                     </div>
-                    <div class="detail-row">
-                        <label>Relative start time</label>
-                        <span x-text="formatRelativeStartTime(selectedSpan)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Relative start time</label>
+                        <span class="text-white text-xs" x-text="formatRelativeStartTime(selectedSpan)"></span>
                     </div>
-                    <div class="detail-row">
-                        <label>Start time</label>
-                        <span x-text="formatTimestamp(selectedSpan?.start_time_unix_nano)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Start time</label>
+                        <span class="text-white text-xs" x-text="formatTimestamp(selectedSpan?.start_time_unix_nano)"></span>
                     </div>
-                    <div class="detail-row">
-                        <label>End time</label>
-                        <span x-text="formatTimestamp(selectedSpan?.end_time_unix_nano)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">End time</label>
+                        <span class="text-white text-xs" x-text="formatTimestamp(selectedSpan?.end_time_unix_nano)"></span>
                     </div>
-                    <div class="detail-row" x-show="wasInterrupted(selectedSpan) !== null">
-                        <label>Interrupted?</label>
-                        <span x-html="formatInterrupted(selectedSpan)"></span>
+                    <div class="grid grid-cols-[150px_1fr] gap-4" x-show="wasInterrupted(selectedSpan) !== null">
+                        <label class="text-white/40 font-semibold text-xs">Interrupted?</label>
+                        <span class="text-white text-xs" x-html="formatInterrupted(selectedSpan)"></span>
                     </div>
                 </div>
 
                 <!-- Dedicated attribute displays for specific span types -->
 
                 <!-- LLM Input -->
-                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'input')">
-                    <label class="section-label">Input</label>
-                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'input')"></pre>
+                <div x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'input')">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Input</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'input')"></pre>
                 </div>
 
                 <!-- Tool Calls -->
-                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && getToolCalls(selectedSpan).length > 0">
-                    <label class="section-label">Tool Calls</label>
-                    <pre class="attributes-json dedicated-attribute" x-text="formatToolCalls(selectedSpan)"></pre>
+                <div x-show="selectedSpan?.name === 'llm' && getToolCalls(selectedSpan).length > 0">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Tool Calls</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatToolCalls(selectedSpan)"></pre>
                 </div>
 
                 <!-- LLM Output -->
-                <div class="attributes-section" x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'output')">
-                    <label class="section-label">Output</label>
-                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'output')"></pre>
+                <div x-show="selectedSpan?.name === 'llm' && hasAttribute(selectedSpan, 'output')">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Output</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'output')"></pre>
                 </div>
 
                 <!-- TTS Text -->
-                <div class="attributes-section" x-show="selectedSpan?.name === 'tts' && hasAttribute(selectedSpan, 'text')">
-                    <label class="section-label">Text</label>
-                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'text')"></pre>
+                <div x-show="selectedSpan?.name === 'tts' && hasAttribute(selectedSpan, 'text')">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Text</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'text')"></pre>
                 </div>
 
                 <!-- STT Transcript -->
-                <div class="attributes-section" x-show="selectedSpan?.name === 'stt' && hasAttribute(selectedSpan, 'transcript')">
-                    <label class="section-label">Transcript</label>
-                    <pre class="attributes-json dedicated-attribute" x-text="formatAttributeValue(selectedSpan, 'transcript')"></pre>
+                <div x-show="selectedSpan?.name === 'stt' && hasAttribute(selectedSpan, 'transcript')">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Transcript</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'transcript')"></pre>
                 </div>
 
                 <!-- Raw Span JSON -->
-                <div class="attributes-section">
-                    <label class="section-label">
+                <div>
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">
                         Raw
-                        <button class="btn copy-button"
-                              :class="{ 'copied': spanCopied }"
+                        <button class="btn ml-4"
+                              :class="{ 'text-emerald-500': spanCopied }"
                               @click="copySpanToClipboard()"
                               title="Copy to Clipboard">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-                              </svg>                        
+                              </svg>
                         </button>
                     </label>
-                    <pre class="attributes-json dedicated-attribute" x-text="getRawSpanJSON(selectedSpan)"></pre>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getRawSpanJSON(selectedSpan)"></pre>
                 </div>
             </div>
         </aside>
