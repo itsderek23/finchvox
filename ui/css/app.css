@@ -45,100 +45,12 @@
 /* ==========================================
    2. BASE & RESET STYLES
    ========================================== */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 [x-cloak] {
     display: none !important;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-    font-size: 14px;
-}
-
 button:focus-visible {
     outline: none;
-}
-
-a {
-    color: #a855f7;
-    text-decoration: underline;
-    transition: color 0.2s;
-}
-
-a:hover, a:focus {
-    color: #c084fc;
-    text-decoration: underline;
-}
-
-/* ==========================================
-   3. LAYOUT & PAGE STRUCTURE
-   ========================================== */
-.page-layout {
-    display: flex;
-    flex: 1;
-    overflow-y: hidden;
-    overflow-x: visible;
-    position: relative;
-}
-
-.main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: visible;
-    transition: margin-right 0.3s ease-out;
-}
-
-.main-content.panel-open {
-    margin-right: 400px;
-}
-
-.fixed-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    background-color: var(--bg-primary);
-}
-
-.main-content.panel-open .fixed-container {
-    right: 400px;
-}
-
-.content-area {
-    flex: 1;
-    margin-top: 280px;
-}
-
-/* ==========================================
-   4. HEADER & NAVIGATION
-   ========================================== */
-.page-header {
-    padding: 0.9rem 2rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background-color: var(--bg-primary);
-}
-
-.logo {
-    height: 20px;
-    width: auto;
 }
 
 /* ==========================================
@@ -707,10 +619,6 @@ a:hover, a:focus {
 /* ==========================================
    11. UTILITY CLASSES
    ========================================== */
-.secondary-text {
-    color: var(--text-secondary);
-}
-
 .mono {
     font-family: 'SF Mono', 'Monaco', monospace;
     font-size: 12px;

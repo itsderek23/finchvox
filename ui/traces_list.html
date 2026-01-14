@@ -4,14 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traces - Finchvox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'span-stt': '#f97316',
+                        'span-llm': '#ec4899',
+                        'span-tts': '#a855f7',
+                        'span-turn': '#10b981',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="/css/app.css">
     <script src="/js/time-utils.js"></script>
     <script defer src="/lib/alpine.min.js"></script>
 </head>
-<body x-data="tracesListApp()" x-init="init()">
-    <div class="page-header">
-        <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="logo">
-        <span class="secondary-text">Traces</span> <span>/</span> <span class="trace-count" x-text="`${traces.length} traces`"></span>
+<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="tracesListApp()" x-init="init()">
+    <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
+        <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto">
+        <span class="text-white/70">Traces</span> <span>/</span> <span x-text="`${traces.length} traces`"></span>
     </div>
     <main class="traces-list-view">
         <div x-show="traces.length === 0" class="error" style="margin:100px 2rem 1rem 2rem;">

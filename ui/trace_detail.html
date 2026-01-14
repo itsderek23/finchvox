@@ -4,21 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trace Detail - Finchvox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'span-stt': '#f97316',
+                        'span-llm': '#ec4899',
+                        'span-tts': '#a855f7',
+                        'span-turn': '#10b981',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="/css/app.css">
     <script defer src="/lib/alpine.min.js"></script>
     <script src="/lib/wavesurfer.min.js"></script>
 </head>
-<body x-data="traceDetailApp()" x-init="init()">
+<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="traceDetailApp()" x-init="init()">
 
     <!-- Main flex container for content and side panel -->
-    <div class="page-layout">
+    <div class="flex flex-1 overflow-y-hidden overflow-x-visible relative">
         <!-- Main content area -->
-        <div class="main-content" :class="{ 'panel-open': isPanelOpen }">
+        <div class="flex-1 flex flex-col overflow-y-auto overflow-x-visible transition-[margin-right] duration-300 ease-out" :class="{ 'mr-[400px]': isPanelOpen }">
             <!-- Fixed container for header and audio player -->
-            <div class="fixed-container">
+            <div class="fixed top-0 left-0 z-[100] bg-[#050507]" :class="{ 'right-[400px]': isPanelOpen, 'right-0': !isPanelOpen }">
                 <!-- Back button -->
-                <div class="page-header">
-                    <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="logo"> <a href="/">Traces</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="traceId">loading...</span>
+                <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
+                    <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto"> <a href="/" class="text-amber-400 underline hover:text-amber-300 transition-colors">Traces</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="traceId">loading...</span>
                     <span x-show="isPolling" class="live-badge">Live</span>
                 </div>
 
@@ -125,7 +140,7 @@
             </div><!-- End fixed-container -->
 
     <!-- Trace View -->
-    <main class="content-area">
+    <main class="flex-1 mt-[280px]">
         <div class="waterfall-container">
 
             <!-- Expand/Collapse All Button -->
