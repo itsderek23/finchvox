@@ -16,9 +16,14 @@ from loguru import logger
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
     add_TraceServiceServicer_to_server
 )
+from opentelemetry.proto.collector.logs.v1.logs_service_pb2_grpc import (
+    add_LogsServiceServicer_to_server
+)
 
 from finchvox.collector.service import TraceCollectorServicer
+from finchvox.collector.log_service import LogCollectorServicer
 from finchvox.collector.writer import SpanWriter
+from finchvox.collector.log_writer import LogWriter
 from finchvox.collector.audio_handler import AudioHandler
 from finchvox.collector.collector_routes import register_collector_routes
 from finchvox.ui_routes import register_ui_routes
@@ -57,6 +62,7 @@ class UnifiedServer:
 
         # Initialize shared writer instances
         self.span_writer = SpanWriter(self.data_dir)
+        self.log_writer = LogWriter(self.data_dir)
         self.audio_handler = AudioHandler(self.data_dir)
 
         # Server instances
@@ -102,9 +108,13 @@ class UnifiedServer:
             futures.ThreadPoolExecutor(max_workers=MAX_WORKERS)
         )
 
-        # Register our service implementation
-        servicer = TraceCollectorServicer(self.span_writer)
-        add_TraceServiceServicer_to_server(servicer, self.grpc_server)
+        # Register trace service
+        trace_servicer = TraceCollectorServicer(self.span_writer)
+        add_TraceServiceServicer_to_server(trace_servicer, self.grpc_server)
+
+        # Register logs service
+        log_servicer = LogCollectorServicer(self.log_writer)
+        add_LogsServiceServicer_to_server(log_servicer, self.grpc_server)
 
         # Bind to port (insecure for PoC - no TLS)
         self.grpc_server.add_insecure_port(f'[::]:{self.grpc_port}')

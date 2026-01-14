@@ -12,6 +12,7 @@ _👇 Click the image for a short video:_
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Setup](#setup)
+- [Configuration](#configuration)
 - [Usage](#usage---finchvox-server)
 - [Troubleshooting](#troubleshooting)
 
@@ -63,6 +64,19 @@ task = PipelineTask(
 )
 ```
 
+## Configuration
+
+The `finchvox.init()` function accepts the following optional parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `endpoint` | `"http://localhost:4317"` | Finchvox collector endpoint |
+| `insecure` | `True` | Use insecure gRPC connection (no TLS) |
+| `capture_logs` | `True` | Send logs to collector alongside traces |
+| `log_modules` | `None` | Additional module prefixes to capture (e.g., `["myapp"]`) |
+
+By default, logs from `pipecat.*`, `finchvox.*`, and `__main__` are captured. Use `log_modules` to include logs from your own modules.
+
 ## Usage - Finchvox server
 
 ```bash
@@ -76,18 +90,6 @@ uv run finchvox --help
 ```
 
 ## Troubleshooting
-
-### Port already in use
-
-If port 4317 is already occupied:
-
-```bash
-# Find process using port
-lsof -i :4317
-
-# Kill the process
-kill -9 <PID>
-```
 
 ### No spans being written
 
