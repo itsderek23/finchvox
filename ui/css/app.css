@@ -3,33 +3,20 @@
    ========================================== */
 /*
    TABLE OF CONTENTS:
-   1. CSS Variables & Root Styles
+   1. CSS Variables (span colors, scrollbar)
    2. Base & Reset Styles
-   3. Layout & Page Structure
-   4. Header & Navigation
-   5. Audio Player & Waveform
-   6. Text Chunks & Hover Markers
-   7. Waterfall View
-   8. Details Panel
-   9. Traces List View
-   10. Scrollbar Styles
-   11. Utility Classes
+   3. Timeline Marker (dynamically generated)
+   4. Timeline Bar (span type colors)
+   5. Scrollbar Styles
+   6. Live Badge Animation
 */
 
 /* ==========================================
-   1. CSS VARIABLES & ROOT STYLES
+   1. CSS VARIABLES
    ========================================== */
 :root {
     --bg-primary: #0a0a0a;
-    --bg-secondary: #1a1a1a;
-    --bg-tertiary: #2a2a2a;
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --text-tertiary: #6b7280;
-    --accent: #a855f7;
-    --accent-hover: #9333ea;
     --border: #333333;
-    --zebra-stripe: #0f0f0f;
     --span-stt: #f97316;
     --span-stt-progress: #ea580c;
     --span-llm: #ec4899;
@@ -54,7 +41,7 @@ button:focus-visible {
 }
 
 /* ==========================================
-   5. TIMELINE MARKER (generated dynamically)
+   3. TIMELINE MARKER (generated dynamically)
    ========================================== */
 .timeline-marker span {
     font-size: 9px;
@@ -63,7 +50,7 @@ button:focus-visible {
 }
 
 /* ==========================================
-   7. TIMELINE BAR (span type colors)
+   4. TIMELINE BAR (span type colors)
    ========================================== */
 .timeline-bar {
     position: absolute;
@@ -93,7 +80,7 @@ button:focus-visible {
 }
 
 /* ==========================================
-   10. SCROLLBAR STYLES
+   5. SCROLLBAR STYLES
    ========================================== */
 ::-webkit-scrollbar {
     width: 8px;
@@ -118,13 +105,8 @@ button:focus-visible {
 }
 
 /* ==========================================
-   11. UTILITY CLASSES
+   6. LIVE BADGE ANIMATION
    ========================================== */
-.mono {
-    font-family: 'SF Mono', 'Monaco', monospace;
-    font-size: 12px;
-}
-
 .live-badge {
     display: inline-flex;
     align-items: center;
@@ -142,42 +124,4 @@ button:focus-visible {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
-}
-
-
-.btn {
-    height: 24px;
-    cursor: pointer;
-    font-size: 11px;
-    border-radius: 2px;
-    transition: background 0.2s;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    padding: 2px 10px;
-    color: var(--text-secondary);
-    text-decoration: none;
-}
-
-.btn:hover {
-    background: var(--bg-tertiary);
-    text-decoration: none;
-    color: var(--text-secondary);
-}
-
-.btn:focus {
-    outline: none;
-    text-decoration: none;
-    color: var(--text-secondary);
-}
-
-.btn span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.btn svg {
-    width: 16px;
-    height: 16px;
 }
