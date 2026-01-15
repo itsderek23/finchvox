@@ -60,24 +60,22 @@
                 <!-- Audio Player Section -->
                 <section class="py-4 px-8 border-b border-white/10 bg-white/[0.02]" x-show="!audioError">
                 <div class="flex items-center justify-between gap-4 mb-4">
-                    <div class="flex items-center gap-4">
-                        <button @click="togglePlay()" class="h-6 flex items-center bg-transparent hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 border border-zinc-600 rounded px-2.5 py-0.5 text-xs transition-colors focus:outline-none" title="SPACEBAR">
-                            <span x-show="!playing" class="flex items-center justify-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                                  </svg> <span>Play</span>
-                            </span>
-                            <span x-show="playing" class="flex items-center justify-center gap-2">
-                                <span>⏸</span><span>Pause</span>
-                            </span>
-                        </button>
-                        <span class="text-[11px] leading-6 h-6 align-middle">
-                            <span class="font-mono text-white/70" x-text="formatTime(currentTime)">00:00</span>
-                            <span class="text-white/40">/</span>
-                            <span class="font-mono text-white/70" x-text="formatTime(duration)">00:00</span>
+                    <button @click="togglePlay()" class="h-6 flex items-center bg-transparent hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 border border-zinc-600 rounded px-2.5 py-0.5 text-xs transition-colors focus:outline-none" title="SPACEBAR">
+                        <span x-show="!playing" class="flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                              </svg> <span>Play</span>
                         </span>
-                    </div>
-                    <div class="flex items-center gap-2">
+                        <span x-show="playing" class="flex items-center justify-center gap-2">
+                            <span>⏸</span><span>Pause</span>
+                        </span>
+                    </button>
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs">
+                            <span class="text-white/70" x-text="formatTime(currentTime)">00:00</span>
+                            <span class="text-white/40">/</span>
+                            <span class="text-white/70" x-text="formatTime(duration)">00:00</span>
+                        </span>
                         <a :href="'/api/trace/' + traceId + '/raw'" target="_blank" class="h-6 flex items-center bg-transparent hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 border border-zinc-600 rounded px-2.5 py-0.5 text-xs transition-colors no-underline" title="View raw trace data">
                             <span class="flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
