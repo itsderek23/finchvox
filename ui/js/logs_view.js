@@ -82,6 +82,24 @@ function logsViewMixin() {
             this.selectedLog = log;
             this.highlightedLogIndex = index;
             this.isLogPanelOpen = true;
+            this.seekToLog(log);
+        },
+
+        seekToLog(log) {
+            if (!log?.time_unix_nano || !this.traceStartTime) return;
+
+            this.highlightLog(log);
+
+            if (this.wavesurfer && this.duration) {
+                const isPlaying = this.wavesurfer.isPlaying();
+                if (!isPlaying) {
+                    const relativeNanos = log.time_unix_nano - this.traceStartTime;
+                    const audioTime = relativeNanos / 1_000_000_000;
+                    const progress = audioTime / this.duration;
+                    this.wavesurfer.seekTo(progress);
+                    this.currentTime = audioTime;
+                }
+            }
         },
 
         closeLogPanel() {
