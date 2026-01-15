@@ -250,14 +250,14 @@
             </div>
 
             <!-- Logs table -->
-            <div class="flex-1 overflow-y-auto" x-show="!logsLoading && logs.length > 0">
-                <table class="w-full">
+            <div class="flex-1 overflow-y-auto overflow-x-hidden" x-show="!logsLoading && logs.length > 0">
+                <table class="w-full table-fixed">
                     <thead class="sticky top-0 bg-[#050507] z-10">
                         <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
-                            <th class="px-8 py-2 text-left font-semibold whitespace-nowrap">Time</th>
-                            <th class="px-4 py-2 text-left font-semibold whitespace-nowrap">Level</th>
+                            <th class="w-20 px-8 py-2 text-left font-semibold">Time</th>
+                            <th class="w-16 px-4 py-2 text-left font-semibold">Level</th>
                             <th class="w-48 px-4 py-2 text-left font-semibold">Logger</th>
-                            <th class="w-full px-4 py-2 text-left font-semibold">Message</th>
+                            <th class="px-4 py-2 text-left font-semibold">Message</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -273,9 +273,9 @@
                                 }"
                                 :data-log-index="index"
                                 @click="selectLog(log, index)">
-                                <td class="px-8 py-2 text-white/60 text-xs whitespace-nowrap" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
-                                <td class="px-4 py-2 text-xs whitespace-nowrap" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
-                                <td class="w-48 px-4 py-2 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></td>
+                                <td class="px-8 py-2 text-white/60 text-xs truncate" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
+                                <td class="px-4 py-2 text-xs truncate" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
+                                <td class="px-4 py-2 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></td>
                                 <td class="px-4 py-2 text-white text-xs truncate" x-text="getLogBody(log)"></td>
                             </tr>
                         </template>
