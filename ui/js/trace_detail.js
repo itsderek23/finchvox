@@ -406,7 +406,7 @@ function traceDetailApp() {
                 tick.style.left = '0';
                 tick.style.bottom = '0';
                 tick.style.width = '1px';
-                tick.style.height = '6px';
+                tick.style.height = '3px';
                 tick.style.backgroundColor = '#6b7280';
 
                 // Create label

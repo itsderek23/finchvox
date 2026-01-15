@@ -86,7 +86,7 @@
 
 
                 <!-- Hover Marker Overlay -->
-                <div class="absolute top-[104px] left-0 h-[157px] pointer-events-none z-20" x-show="hoverMarker.visible" :style="`left: ${getMarkerPosition()}`">
+                <div class="absolute top-[102px] left-0 h-[157px] pointer-events-none z-20" x-show="hoverMarker.visible" :style="`left: ${getMarkerPosition()}`">
                     <div class="absolute top-0 left-1/2 -translate-x-1/2 bg-gray-500 text-black py-0.5 px-1.5 rounded-sm text-[10px] font-medium tracking-wide font-mono whitespace-nowrap z-20" x-text="getMarkerTimeLabel()"></div>
                     <div class="absolute top-4 h-[117px] left-0 w-px bg-gray-500"></div>
                 </div>
@@ -107,7 +107,7 @@
                 <div class="relative h-[22px] mb-1 pointer-events-none"
                     x-show="getTurnChunks().length > 0">
                     <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
-                        <div class="absolute h-5 px-1.5 bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
+                        <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
                             x-show="chunk.humanText"
                             :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
                             :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
@@ -125,7 +125,7 @@
                 <div class="relative h-[22px] mb-0 pointer-events-none"
                     x-show="getTurnChunks().length > 0">
                     <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
-                        <div class="absolute h-5 px-1.5 bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
+                        <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
                             x-show="chunk.botText"
                             :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
                             :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
