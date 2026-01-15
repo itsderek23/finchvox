@@ -388,7 +388,7 @@
         </aside>
 
         <!-- Side Panel (log details) -->
-        <aside class="fixed top-12 right-0 bottom-0 w-[400px] bg-[#050507] border-l border-t border-white/10 overflow-y-auto z-[100] shadow-[-4px_0_20px_rgba(0,0,0,0.5)]"
+        <aside class="fixed top-12 right-0 bottom-0 w-[400px] bg-[#050507] border-l border-t border-white/10 overflow-y-auto overflow-x-hidden z-[100] shadow-[-4px_0_20px_rgba(0,0,0,0.5)]"
            x-show="isLogPanelOpen"
            x-transition:enter="transition ease-out duration-300"
            x-transition:enter-start="translate-x-full"
@@ -402,21 +402,21 @@
             </div>
             <div class="p-8" x-show="selectedLog">
                 <div class="grid gap-4 mb-8">
-                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                    <div class="grid grid-cols-[150px_1fr] gap-4 min-w-0">
                         <label class="text-white/40 font-semibold text-xs">Severity:</label>
-                        <span class="text-xs" :class="getLogLevelClass(selectedLog?.severity_text)" x-text="selectedLog?.severity_text"></span>
+                        <span class="text-xs truncate" :class="getLogLevelClass(selectedLog?.severity_text)" x-text="selectedLog?.severity_text"></span>
                     </div>
-                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                    <div class="grid grid-cols-[150px_1fr] gap-4 min-w-0">
                         <label class="text-white/40 font-semibold text-xs">Relative start time:</label>
-                        <span class="text-white text-xs" x-text="formatLogRelativeTime(selectedLog?.time_unix_nano)"></span>
+                        <span class="text-white text-xs truncate" x-text="formatLogRelativeTime(selectedLog?.time_unix_nano)"></span>
                     </div>
-                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                    <div class="grid grid-cols-[150px_1fr] gap-4 min-w-0">
                         <label class="text-white/40 font-semibold text-xs">Timestamp:</label>
-                        <span class="text-white text-xs" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></span>
+                        <span class="text-white text-xs truncate" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></span>
                     </div>
-                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                    <div class="grid grid-cols-[150px_1fr] gap-4 min-w-0">
                         <label class="text-white/40 font-semibold text-xs">Logger:</label>
-                        <span class="text-white text-xs" x-text="selectedLog?.instrumentation_scope?.name || 'N/A'"></span>
+                        <span class="text-white text-xs truncate" x-text="selectedLog?.instrumentation_scope?.name || 'N/A'"></span>
                     </div>
                 </div>
 
