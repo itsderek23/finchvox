@@ -186,6 +186,23 @@ function logsViewMixin() {
                     block: 'nearest'
                 });
             }
+        },
+
+        highlightLog(log) {
+            if (!log?.time_unix_nano || !this.traceStartTime || !this.duration) return;
+
+            const relativeNanos = log.time_unix_nano - this.traceStartTime;
+            const relativeSeconds = relativeNanos / 1_000_000_000;
+
+            this.hoverMarker.time = relativeSeconds;
+            this.hoverMarker.source = 'logs';
+            this.hoverMarker.visible = true;
+        },
+
+        unhighlightLog() {
+            if (this.hoverMarker.source === 'logs') {
+                this.hoverMarker.visible = false;
+            }
         }
     };
 }

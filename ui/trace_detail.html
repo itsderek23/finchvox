@@ -255,7 +255,7 @@
                     <thead class="sticky top-0 bg-[#050507] z-10">
                         <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
                             <th class="w-20 px-8 py-2 text-left font-semibold">Time</th>
-                            <th class="w-16 px-4 py-2 text-left font-semibold">Level</th>
+                            <th class="w-20 px-4 py-2 text-left font-semibold">Level</th>
                             <th class="w-48 px-4 py-2 text-left font-semibold">Logger</th>
                             <th class="px-4 py-2 text-left font-semibold">Message</th>
                         </tr>
@@ -272,9 +272,11 @@
                                     'ring-1 ring-inset ring-amber-500/50': highlightedLogIndex === index && selectedLog !== log
                                 }"
                                 :data-log-index="index"
-                                @click="selectLog(log, index)">
+                                @click="selectLog(log, index)"
+                                @mouseenter="highlightLog(log)"
+                                @mouseleave="unhighlightLog()">
                                 <td class="px-8 py-2 text-white/60 text-xs truncate" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
-                                <td class="px-4 py-2 text-xs truncate" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
+                                <td class="px-4 py-2 text-xs whitespace-nowrap" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
                                 <td class="px-4 py-2 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></td>
                                 <td class="px-4 py-2 text-white text-xs truncate" x-text="getLogBody(log)"></td>
                             </tr>
