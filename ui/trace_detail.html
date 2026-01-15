@@ -401,20 +401,21 @@
                 <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
             </div>
             <div class="p-8" x-show="selectedLog">
-                <!-- Timestamp -->
-                <div class="text-white/40 text-xs mb-1" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></div>
-                <div class="text-white/60 text-sm mb-6" x-text="formatLogRelativeTime(selectedLog?.time_unix_nano)"></div>
-
                 <div class="grid gap-4 mb-8">
-                    <!-- Severity -->
-                    <div class="grid grid-cols-[100px_1fr] gap-4">
-                        <label class="text-white/40 font-semibold text-xs">Severity</label>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Severity:</label>
                         <span class="text-xs" :class="getLogLevelClass(selectedLog?.severity_text)" x-text="selectedLog?.severity_text"></span>
                     </div>
-
-                    <!-- Logger -->
-                    <div class="grid grid-cols-[100px_1fr] gap-4">
-                        <label class="text-white/40 font-semibold text-xs">Logger</label>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Relative start time:</label>
+                        <span class="text-white text-xs" x-text="formatLogRelativeTime(selectedLog?.time_unix_nano)"></span>
+                    </div>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Timestamp:</label>
+                        <span class="text-white text-xs" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></span>
+                    </div>
+                    <div class="grid grid-cols-[150px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Logger:</label>
                         <span class="text-white text-xs" x-text="selectedLog?.instrumentation_scope?.name || 'N/A'"></span>
                     </div>
                 </div>
