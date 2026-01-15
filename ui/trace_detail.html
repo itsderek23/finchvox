@@ -267,9 +267,8 @@
                                     'bg-[#0f0f0f]': index % 2 === 1 && selectedLog !== log && highlightedLogIndex !== index && !['WARN', 'WARNING', 'ERROR', 'FATAL', 'CRITICAL'].includes(log.severity_text?.toUpperCase()),
                                     'bg-amber-500/10': ['WARN', 'WARNING'].includes(log.severity_text?.toUpperCase()) && selectedLog !== log,
                                     'bg-red-500/10': ['ERROR', 'FATAL', 'CRITICAL'].includes(log.severity_text?.toUpperCase()) && selectedLog !== log,
-                                    'hover:bg-amber-500/[0.08]': selectedLog !== log && highlightedLogIndex !== index,
-                                    'bg-amber-500/[0.15] border-l-amber-500': selectedLog === log,
-                                    'ring-1 ring-inset ring-amber-500/50': highlightedLogIndex === index && selectedLog !== log
+                                    'hover:bg-amber-500/[0.08]': selectedLog !== log,
+                                    'bg-amber-500/[0.15] border-l-amber-500': selectedLog === log || highlightedLogIndex === index
                                 }"
                                 :data-log-index="index"
                                 @click="selectLog(log, index)"
