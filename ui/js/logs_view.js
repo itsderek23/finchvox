@@ -10,6 +10,13 @@ function logsViewMixin() {
         logsTotalCount: 0,
         logsLimit: 1000,
         traceStartTime: null,
+        logSearchQuery: '',
+        logLevelFilters: {
+            DEBUG: true,
+            INFO: true,
+            WARN: true,
+            ERROR: true
+        },
 
         initLogsView() {
             const hash = window.location.hash.slice(1);
@@ -105,6 +112,30 @@ function logsViewMixin() {
         closeLogPanel() {
             this.isLogPanelOpen = false;
             this.selectedLog = null;
+        },
+
+        getFilteredLogs() {
+            return this.logs.filter(log => {
+                const level = (log.severity_text || '').toUpperCase();
+                const normalizedLevel = (level === 'WARNING') ? 'WARN' :
+                                        (level === 'FATAL' || level === 'CRITICAL') ? 'ERROR' : level;
+                if (!this.logLevelFilters[normalizedLevel]) {
+                    return false;
+                }
+
+                if (this.logSearchQuery) {
+                    const body = this.getLogBody(log).toLowerCase();
+                    if (!body.includes(this.logSearchQuery.toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+        },
+
+        toggleLogLevel(level) {
+            this.logLevelFilters[level] = !this.logLevelFilters[level];
         },
 
         formatLogRelativeTime(timestamp) {

@@ -239,6 +239,24 @@
     <!-- Logs View -->
     <main x-show="selectedView === 'logs'" class="flex-1 mt-[328px]">
         <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
+            <!-- Filter Bar -->
+            <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
+                <input type="text"
+                       x-model="logSearchQuery"
+                       placeholder="Filter logs..."
+                       class="bg-white/[0.02] border border-white/10 rounded-sm px-3 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/20 w-64">
+                <div class="flex gap-1">
+                    <template x-for="level in ['DEBUG', 'INFO', 'WARN', 'ERROR']" :key="level">
+                        <button @click="toggleLogLevel(level)"
+                                class="px-2 py-0.5 text-[11px] rounded-sm border transition-colors"
+                                :class="logLevelFilters[level]
+                                    ? 'bg-white/10 border-white/20 text-white'
+                                    : 'bg-transparent border-white/10 text-white/40'"
+                                x-text="level"></button>
+                    </template>
+                </div>
+            </div>
+
             <!-- Loading state -->
             <div x-show="logsLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading logs...</span>
@@ -249,8 +267,13 @@
                 <span class="text-white/40">No logs for this trace</span>
             </div>
 
+            <!-- No matches state -->
+            <div x-show="!logsLoading && logs.length > 0 && getFilteredLogs().length === 0" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">No logs match the current filters</span>
+            </div>
+
             <!-- Logs table -->
-            <div class="flex-1 overflow-y-auto overflow-x-hidden" x-show="!logsLoading && logs.length > 0">
+            <div class="flex-1 overflow-y-auto overflow-x-hidden" x-show="!logsLoading && getFilteredLogs().length > 0">
                 <table class="w-full table-fixed">
                     <thead class="sticky top-0 bg-[#050507] z-10">
                         <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
@@ -261,7 +284,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="(log, index) in logs" :key="index">
+                        <template x-for="(log, index) in getFilteredLogs()" :key="index">
                             <tr class="h-8 cursor-pointer border-l-2 border-transparent transition-colors"
                                 :class="{
                                     'bg-[#0f0f0f]': index % 2 === 1 && selectedLog !== log && highlightedLogIndex !== index && !['WARN', 'WARNING', 'ERROR', 'FATAL', 'CRITICAL'].includes(log.severity_text?.toUpperCase()),
@@ -285,8 +308,9 @@
             </div>
 
             <!-- Log count info -->
-            <div x-show="!logsLoading && logsTotalCount > logsLimit" class="px-8 py-2 border-t border-white/10 text-white/40 text-xs">
-                Showing <span x-text="logs.length"></span> of <span x-text="logsTotalCount"></span> logs
+            <div x-show="!logsLoading && logs.length > 0" class="px-8 py-2 border-t border-white/10 text-white/40 text-xs">
+                Showing <span x-text="getFilteredLogs().length"></span> of <span x-text="logs.length"></span> logs
+                <span x-show="logsTotalCount > logsLimit"> (limited to <span x-text="logsLimit"></span>)</span>
             </div>
         </div>
     </main>
