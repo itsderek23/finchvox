@@ -45,6 +45,9 @@ function traceDetailApp() {
         // Copy state
         spanCopied: false,
 
+        // Logs view mixin (state and methods from logs_view.js)
+        ...logsViewMixin(),
+
         // Timeline state
         minTime: 0,
         maxTime: 0,
@@ -72,7 +75,9 @@ function traceDetailApp() {
                 return;
             }
 
+            this.initLogsView();
             await this.loadTraceData();
+            this.loadLogsIfNeeded();
 
             // Start polling if trace appears to be active
             const conversationSpan = this.spans.find(s => s.name === 'conversation');
@@ -472,6 +477,10 @@ function traceDetailApp() {
 
         handleKeydown(event) {
             if (this.isUserTyping()) return;
+
+            if (this.selectedView === 'logs') {
+                if (this.handleLogsKeydown(event)) return;
+            }
 
             const handlers = {
                 ' ': () => this.togglePlay(),

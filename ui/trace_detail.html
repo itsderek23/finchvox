@@ -28,9 +28,9 @@
     <!-- Main flex container for content and side panel -->
     <div class="flex flex-1 overflow-y-hidden overflow-x-visible relative">
         <!-- Main content area -->
-        <div class="flex-1 flex flex-col overflow-y-auto overflow-x-visible transition-[margin-right] duration-300 ease-out" :class="{ 'mr-[400px]': isPanelOpen }">
+        <div class="flex-1 flex flex-col overflow-y-auto overflow-x-visible transition-[margin-right] duration-300 ease-out" :class="{ 'mr-[400px]': isPanelOpen || isLogPanelOpen }">
             <!-- Fixed container for header and audio player -->
-            <div class="fixed top-0 left-0 z-[100] bg-[#050507]" :class="{ 'right-[400px]': isPanelOpen, 'right-0': !isPanelOpen }">
+            <div class="fixed top-0 left-0 z-[100] bg-[#050507]" :class="{ 'right-[400px]': isPanelOpen || isLogPanelOpen, 'right-0': !isPanelOpen && !isLogPanelOpen }">
                 <!-- Back button -->
                 <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
                     <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto"> <a href="/" class="text-amber-400 underline hover:text-amber-300 transition-colors">Traces</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="traceId">loading...</span>
@@ -137,11 +137,25 @@
                     </template>
                 </div>
             </section>
+
+                <!-- View Tabs -->
+                <div class="flex gap-6 px-8 py-3 border-b border-white/10 bg-[#050507]">
+                    <button @click="switchView('trace')"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Trace
+                    </button>
+                    <button @click="switchView('logs')"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'logs' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Logs
+                    </button>
+                </div>
             </div><!-- End fixed-container -->
 
     <!-- Trace View -->
-    <main class="flex-1 mt-[280px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-320px)]">
+    <main x-show="selectedView === 'trace'" class="flex-1 mt-[328px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
 
             <!-- Expand/Collapse All Button -->
             <div class="py-4 px-8 pb-3 flex items-center justify-between">
@@ -219,6 +233,58 @@
                 </template>
             </div>
 
+        </div>
+    </main>
+
+    <!-- Logs View -->
+    <main x-show="selectedView === 'logs'" class="flex-1 mt-[328px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
+            <!-- Header row -->
+            <div class="flex px-8 py-2 border-b border-white/10 text-white/40 text-xs font-semibold sticky top-0 bg-[#050507] z-10">
+                <div class="w-24 shrink-0">Time</div>
+                <div class="w-16 shrink-0">Level</div>
+                <div class="w-36 shrink-0">Logger</div>
+                <div class="flex-1 min-w-0">Message</div>
+            </div>
+
+            <!-- Loading state -->
+            <div x-show="logsLoading" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">Loading logs...</span>
+            </div>
+
+            <!-- Empty state -->
+            <div x-show="!logsLoading && logs.length === 0" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">No logs for this trace</span>
+            </div>
+
+            <!-- Log rows -->
+            <div class="flex-1 overflow-y-auto" x-show="!logsLoading && logs.length > 0">
+                <template x-for="(log, index) in logs" :key="index">
+                    <div class="flex px-8 py-2 h-8 items-center cursor-pointer border-l-2 border-transparent transition-colors"
+                         :class="{
+                             'bg-[#0f0f0f]': index % 2 === 1 && selectedLog !== log && highlightedLogIndex !== index,
+                             'hover:bg-amber-500/[0.08]': selectedLog !== log && highlightedLogIndex !== index,
+                             'bg-amber-500/[0.15] border-l-amber-500': selectedLog === log,
+                             'ring-1 ring-inset ring-amber-500/50': highlightedLogIndex === index && selectedLog !== log
+                         }"
+                         :data-log-index="index"
+                         @click="selectLog(log, index)">
+                        <div class="w-24 shrink-0 text-white/60 text-xs font-mono" x-text="formatLogRelativeTime(log.time_unix_nano)"></div>
+                        <div class="w-16 shrink-0">
+                            <span class="text-xs"
+                                  :class="getLogLevelClass(log.severity_text)"
+                                  x-text="log.severity_text"></span>
+                        </div>
+                        <div class="w-36 shrink-0 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></div>
+                        <div class="flex-1 min-w-0 text-white text-xs truncate" x-text="getLogBody(log)"></div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Log count info -->
+            <div x-show="!logsLoading && logsTotalCount > logsLimit" class="px-8 py-2 border-t border-white/10 text-white/40 text-xs">
+                Showing <span x-text="logs.length"></span> of <span x-text="logsTotalCount"></span> logs
+            </div>
         </div>
     </main>
 
@@ -319,9 +385,66 @@
             </div>
         </aside>
 
+        <!-- Side Panel (log details) -->
+        <aside class="fixed top-12 right-0 bottom-0 w-[400px] bg-[#050507] border-l border-t border-white/10 overflow-y-auto z-[100] shadow-[-4px_0_20px_rgba(0,0,0,0.5)]"
+           x-show="isLogPanelOpen"
+           x-transition:enter="transition ease-out duration-300"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-200"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full">
+            <div class="flex justify-between items-center py-2 px-8 border-b border-white/10 sticky top-0 z-10 bg-[#050507]">
+                <h3 class="text-sm font-semibold tracking-wide">Inspect log</h3>
+                <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
+            </div>
+            <div class="p-8" x-show="selectedLog">
+                <!-- Timestamp -->
+                <div class="text-white/40 text-xs mb-1" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></div>
+                <div class="text-white/60 text-sm mb-6" x-text="'+' + formatLogRelativeTime(selectedLog?.time_unix_nano)"></div>
+
+                <div class="grid gap-4 mb-8">
+                    <!-- Severity -->
+                    <div class="grid grid-cols-[100px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Severity</label>
+                        <span class="text-xs" :class="getLogLevelClass(selectedLog?.severity_text)" x-text="selectedLog?.severity_text"></span>
+                    </div>
+
+                    <!-- Logger -->
+                    <div class="grid grid-cols-[100px_1fr] gap-4">
+                        <label class="text-white/40 font-semibold text-xs">Logger</label>
+                        <span class="text-white text-xs" x-text="selectedLog?.instrumentation_scope?.name || 'N/A'"></span>
+                    </div>
+                </div>
+
+                <!-- Message -->
+                <div class="mb-6">
+                    <label class="text-white/40 font-semibold text-xs mb-2 block">Message</label>
+                    <div class="text-white text-sm bg-[#0a0a0c] p-3 rounded border border-white/10 whitespace-pre-wrap break-words" x-text="getLogBody(selectedLog)"></div>
+                </div>
+
+                <!-- Raw JSON -->
+                <div>
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">
+                        Raw
+                        <button class="h-6 flex items-center cursor-pointer text-[11px] rounded-sm transition-colors bg-white/[0.02] border border-white/10 py-0.5 px-2.5 text-white/70 hover:bg-white/5 focus:outline-none ml-4"
+                              :class="{ 'text-emerald-500': logCopied }"
+                              @click="copyLogToClipboard()"
+                              title="Copy to Clipboard">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                              </svg>
+                        </button>
+                    </label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getRawLogJSON(selectedLog)"></pre>
+                </div>
+            </div>
+        </aside>
+
     </div><!-- End page-layout -->
 
     <script src="/js/time-utils.js"></script>
+    <script src="/js/logs_view.js"></script>
     <script src="/js/trace_detail.js"></script>
 </body>
 </html>

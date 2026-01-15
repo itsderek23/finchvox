@@ -157,6 +157,51 @@ async def _handle_get_jsonl_records(
     return JSONResponse({response_key: records})
 
 
+async def _handle_get_logs(data_dir: Path, trace_id: str, limit: int) -> JSONResponse:
+    """Get logs for a specific trace with sorting and limiting."""
+    trace_dir = get_trace_dir(data_dir, trace_id)
+    trace_file = trace_dir / f"trace_{trace_id}.jsonl"
+
+    if not trace_file.exists():
+        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
+
+    log_file = trace_dir / f"logs_{trace_id}.jsonl"
+
+    if not log_file.exists():
+        spans = _read_jsonl_file(trace_file)
+        trace_start_time = None
+        if spans:
+            trace_start_time = min(s.get("start_time_unix_nano", float("inf")) for s in spans)
+        return JSONResponse({
+            "logs": [],
+            "total_count": 0,
+            "limit": limit,
+            "trace_start_time": trace_start_time
+        })
+
+    try:
+        logs = _read_jsonl_file(log_file)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
+
+    logs.sort(key=lambda l: int(l.get("time_unix_nano", 0)))
+
+    total_count = len(logs)
+    logs = logs[:limit]
+
+    spans = _read_jsonl_file(trace_file)
+    trace_start_time = None
+    if spans:
+        trace_start_time = min(s.get("start_time_unix_nano", float("inf")) for s in spans)
+
+    return JSONResponse({
+        "logs": logs,
+        "total_count": total_count,
+        "limit": limit,
+        "trace_start_time": trace_start_time
+    })
+
+
 async def _handle_get_audio(
     data_dir: Path,
     trace_id: str,
@@ -227,9 +272,8 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
         return await _handle_get_trace_raw(data_dir, trace_id)
 
     @app.get("/api/logs/{trace_id}")
-    async def get_logs(trace_id: str) -> JSONResponse:
-        log_file = get_trace_logs_dir(data_dir, trace_id) / f"log_{trace_id}.jsonl"
-        return await _handle_get_jsonl_records(log_file, "logs")
+    async def get_logs(trace_id: str, limit: int = 1000) -> JSONResponse:
+        return await _handle_get_logs(data_dir, trace_id, limit)
 
     @app.get("/api/exceptions/{trace_id}")
     async def get_exceptions(trace_id: str) -> JSONResponse:
