@@ -50,6 +50,7 @@
                     <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">End Time</th>
                     <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Duration</th>
                     <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Spans</th>
+                    <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70">Logs</th>
                     <th class="text-left py-4 px-6 text-xs font-semibold tracking-wide text-white/70"></th>
                 </tr>
             </thead>
@@ -63,7 +64,8 @@
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.start_time)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.end_time)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(trace.duration_ms)"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.span_count"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.span_count)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.log_count)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm">
 
                         </td>

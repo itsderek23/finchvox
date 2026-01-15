@@ -26,10 +26,12 @@ class Trace:
         self.trace_file = trace_file
         self.trace_id = trace_file.stem.replace("trace_", "")
         self._span_count: Optional[int] = None
+        self._log_count: Optional[int] = None
         self._min_start_nano: Optional[int] = None
         self._max_end_nano: Optional[int] = None
         self._service_name: Optional[str] = None
         self._load_metadata()
+        self._load_log_count()
 
     def _extract_service_name(self, span: dict) -> Optional[str]:
         resource = span.get("resource", {})
@@ -78,10 +80,32 @@ class Trace:
         self._max_end_nano = max_end
         self._service_name = service_name
 
+    def _load_log_count(self):
+        log_file = self.trace_file.parent / f"logs_{self.trace_id}.jsonl"
+        if not log_file.exists():
+            self._log_count = 0
+            return
+
+        try:
+            count = 0
+            with open(log_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        count += 1
+            self._log_count = count
+        except Exception as e:
+            print(f"Error loading log count for trace {self.trace_id}: {e}")
+            self._log_count = 0
+
     @property
     def span_count(self) -> int:
         """Get total span count."""
         return self._span_count or 0
+
+    @property
+    def log_count(self) -> int:
+        """Get total log line count."""
+        return self._log_count or 0
 
     @property
     def start_time(self) -> Optional[float]:
@@ -115,6 +139,7 @@ class Trace:
             "trace_id": self.trace_id,
             "service_name": self.service_name,
             "span_count": self.span_count,
+            "log_count": self.log_count,
             "start_time": self.start_time,
             "end_time": self.end_time,
             "duration_ms": self.duration_ms,
