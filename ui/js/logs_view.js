@@ -93,7 +93,7 @@ function logsViewMixin() {
             if (!timestamp || !this.traceStartTime) return '';
             const relativeNanos = timestamp - this.traceStartTime;
             const relativeMs = relativeNanos / 1_000_000;
-            return '+' + formatDuration(relativeMs);
+            return formatDuration(relativeMs);
         },
 
         formatLogTimestamp(timestamp) {

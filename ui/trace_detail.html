@@ -401,7 +401,7 @@
             <div class="p-8" x-show="selectedLog">
                 <!-- Timestamp -->
                 <div class="text-white/40 text-xs mb-1" x-text="formatLogTimestamp(selectedLog?.time_unix_nano)"></div>
-                <div class="text-white/60 text-sm mb-6" x-text="'+' + formatLogRelativeTime(selectedLog?.time_unix_nano)"></div>
+                <div class="text-white/60 text-sm mb-6" x-text="formatLogRelativeTime(selectedLog?.time_unix_nano)"></div>
 
                 <div class="grid gap-4 mb-8">
                     <!-- Severity -->
