@@ -280,10 +280,10 @@
                                 @click="selectLog(log, index)"
                                 @mouseenter="highlightLog(log)"
                                 @mouseleave="unhighlightLog()">
-                                <td class="px-8 py-2 text-white/60 text-xs truncate" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
-                                <td class="px-4 py-2 text-xs whitespace-nowrap" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
-                                <td class="px-4 py-2 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></td>
-                                <td class="px-4 py-2 text-white text-xs truncate" x-text="getLogBody(log)"></td>
+                                <td class="px-8 py-2 text-white/60 text-xs truncate font-mono" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
+                                <td class="px-4 py-2 text-xs whitespace-nowrap font-mono" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
+                                <td class="px-4 py-2 text-white/70 text-xs truncate font-mono" x-text="log.instrumentation_scope?.name || ''"></td>
+                                <td class="px-4 py-2 text-white text-xs truncate font-mono" x-text="getLogBody(log)"></td>
                             </tr>
                         </template>
                     </tbody>
@@ -431,7 +431,7 @@
                 <!-- Message -->
                 <div class="mb-6">
                     <label class="text-white/40 font-semibold text-xs mb-2 block">Message</label>
-                    <div class="text-white text-sm bg-[#0a0a0c] p-3 rounded border border-white/10 whitespace-pre-wrap break-words" x-text="getLogBody(selectedLog)"></div>
+                    <div class="text-white text-sm bg-[#0a0a0c] p-3 rounded border border-white/10 whitespace-pre-wrap break-words font-mono" x-text="getLogBody(selectedLog)"></div>
                 </div>
 
                 <!-- Raw JSON -->
