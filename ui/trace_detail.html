@@ -239,14 +239,6 @@
     <!-- Logs View -->
     <main x-show="selectedView === 'logs'" class="flex-1 mt-[328px]">
         <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
-            <!-- Header row -->
-            <div class="flex px-8 py-2 border-b border-white/10 text-white/40 text-xs font-semibold sticky top-0 bg-[#050507] z-10">
-                <div class="w-24 shrink-0">Time</div>
-                <div class="w-16 shrink-0">Level</div>
-                <div class="w-36 shrink-0">Logger</div>
-                <div class="flex-1 min-w-0">Message</div>
-            </div>
-
             <!-- Loading state -->
             <div x-show="logsLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading logs...</span>
@@ -257,28 +249,38 @@
                 <span class="text-white/40">No logs for this trace</span>
             </div>
 
-            <!-- Log rows -->
+            <!-- Logs table -->
             <div class="flex-1 overflow-y-auto" x-show="!logsLoading && logs.length > 0">
-                <template x-for="(log, index) in logs" :key="index">
-                    <div class="flex px-8 py-2 h-8 items-center cursor-pointer border-l-2 border-transparent transition-colors"
-                         :class="{
-                             'bg-[#0f0f0f]': index % 2 === 1 && selectedLog !== log && highlightedLogIndex !== index,
-                             'hover:bg-amber-500/[0.08]': selectedLog !== log && highlightedLogIndex !== index,
-                             'bg-amber-500/[0.15] border-l-amber-500': selectedLog === log,
-                             'ring-1 ring-inset ring-amber-500/50': highlightedLogIndex === index && selectedLog !== log
-                         }"
-                         :data-log-index="index"
-                         @click="selectLog(log, index)">
-                        <div class="w-24 shrink-0 text-white/60 text-xs font-mono" x-text="formatLogRelativeTime(log.time_unix_nano)"></div>
-                        <div class="w-16 shrink-0">
-                            <span class="text-xs"
-                                  :class="getLogLevelClass(log.severity_text)"
-                                  x-text="log.severity_text"></span>
-                        </div>
-                        <div class="w-36 shrink-0 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></div>
-                        <div class="flex-1 min-w-0 text-white text-xs truncate" x-text="getLogBody(log)"></div>
-                    </div>
-                </template>
+                <table class="w-full">
+                    <thead class="sticky top-0 bg-[#050507] z-10">
+                        <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
+                            <th class="px-8 py-2 text-left font-semibold whitespace-nowrap">Time</th>
+                            <th class="px-4 py-2 text-left font-semibold whitespace-nowrap">Level</th>
+                            <th class="w-48 px-4 py-2 text-left font-semibold">Logger</th>
+                            <th class="w-full px-4 py-2 text-left font-semibold">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(log, index) in logs" :key="index">
+                            <tr class="h-8 cursor-pointer border-l-2 border-transparent transition-colors"
+                                :class="{
+                                    'bg-[#0f0f0f]': index % 2 === 1 && selectedLog !== log && highlightedLogIndex !== index && !['WARN', 'WARNING', 'ERROR', 'FATAL', 'CRITICAL'].includes(log.severity_text?.toUpperCase()),
+                                    'bg-amber-500/10': ['WARN', 'WARNING'].includes(log.severity_text?.toUpperCase()) && selectedLog !== log,
+                                    'bg-red-500/10': ['ERROR', 'FATAL', 'CRITICAL'].includes(log.severity_text?.toUpperCase()) && selectedLog !== log,
+                                    'hover:bg-amber-500/[0.08]': selectedLog !== log && highlightedLogIndex !== index,
+                                    'bg-amber-500/[0.15] border-l-amber-500': selectedLog === log,
+                                    'ring-1 ring-inset ring-amber-500/50': highlightedLogIndex === index && selectedLog !== log
+                                }"
+                                :data-log-index="index"
+                                @click="selectLog(log, index)">
+                                <td class="px-8 py-2 text-white/60 text-xs whitespace-nowrap" x-text="formatLogRelativeTime(log.time_unix_nano)"></td>
+                                <td class="px-4 py-2 text-xs whitespace-nowrap" :class="getLogLevelClass(log.severity_text)" x-text="log.severity_text"></td>
+                                <td class="w-48 px-4 py-2 text-white/70 text-xs truncate" x-text="log.instrumentation_scope?.name || ''"></td>
+                                <td class="px-4 py-2 text-white text-xs truncate" x-text="getLogBody(log)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Log count info -->
