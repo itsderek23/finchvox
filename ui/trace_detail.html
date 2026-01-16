@@ -212,7 +212,7 @@
 
     <!-- Logs View -->
     <main x-show="selectedView === 'logs'" class="flex-1 mt-[328px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-338px)]">
             <!-- Filter Bar -->
             <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
                 <div class="relative">
@@ -287,9 +287,8 @@
             </div>
 
             <!-- Log count info -->
-            <div x-show="!logsLoading && logs.length > 0" class="px-8 py-2 border-t border-white/10 text-white/40 text-xs">
-                Showing <span x-text="getFilteredLogs().length"></span> of <span x-text="logs.length"></span> logs
-                <span x-show="logsTotalCount > logsLimit"> (limited to <span x-text="logsLimit"></span>)</span>
+            <div x-show="!logsLoading && logs.length > 0" class="h-8 px-8 border-t border-white/10 text-white/40 text-xs flex items-center">
+                <span>Showing <span x-text="getFilteredLogs().length"></span> of <span x-text="logs.length"></span> logs<span x-show="logsTotalCount > logsLimit"> (limited to <span x-text="logsLimit"></span>)</span></span>
             </div>
         </div>
     </main>
