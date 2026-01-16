@@ -21,6 +21,10 @@ function tracesListApp() {
         formatDuration(milliseconds) {
             if (!milliseconds) return '-';
             return formatDuration(milliseconds, 0);  // Uses time-utils.js
+        },
+
+        formatCount(count) {
+            return (count && count > 0) ? count.toLocaleString() : '—';
         }
     };
 }

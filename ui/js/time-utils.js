@@ -21,62 +21,49 @@
  * @throws {Error} If milliseconds is null, undefined, or NaN
  */
 function formatDuration(milliseconds, decimalPlaces = 1) {
-    // Validate input
     if (milliseconds == null || isNaN(milliseconds)) {
         throw new Error(`Invalid duration input: ${milliseconds}`);
     }
+    if (milliseconds === 0) return "0ms";
 
-    // Handle zero
-    if (milliseconds === 0) {
-        return "0ms";
-    }
-
-    // Handle negative durations
     const isNegative = milliseconds < 0;
     const absMs = Math.abs(milliseconds);
 
-    let result;
-
-    // < 1ms: show with 2 decimal places
-    if (absMs < 1) {
-        result = `${absMs.toFixed(2)}ms`;
-    }
-    // >= 1ms and < 1s: show in ms with no decimals
-    else if (absMs < 1000) {
-        result = `${Math.round(absMs)}ms`;
-    }
-    // >= 1s and < 1min: show in seconds with configurable decimals
-    else if (absMs < 60000) {
-        const seconds = absMs / 1000;
-        result = `${seconds.toFixed(decimalPlaces)}s`;
-    }
-    // >= 1min and < 1h: show as M:SS + "m"
-    else if (absMs < 3600000) {
-        const totalSeconds = Math.round(absMs / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        result = `${minutes}:${String(seconds).padStart(2, '0')}m`;
-    }
-    // >= 1h and < 24h: show as H:MM:SS + "h"
-    else if (absMs < 86400000) {
-        const totalSeconds = Math.round(absMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        result = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}h`;
-    }
-    // >= 24h: show as "Xd H:MM:SS" + "h"
-    else {
-        const totalSeconds = Math.round(absMs / 1000);
-        const days = Math.floor(totalSeconds / 86400);
-        const hours = Math.floor((totalSeconds % 86400) / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        result = `${days}d ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}h`;
-    }
-
-    // Add negative sign if needed
+    const result = formatAbsoluteDuration(absMs, decimalPlaces);
     return isNegative ? `-${result}` : result;
+}
+
+function formatAbsoluteDuration(absMs, decimalPlaces) {
+    if (absMs < 1) return `${absMs.toFixed(2)}ms`;
+    if (absMs < 1000) return `${Math.round(absMs)}ms`;
+    if (absMs < 60000) return `${(absMs / 1000).toFixed(decimalPlaces)}s`;
+    if (absMs < 3600000) return formatDurationMinutes(absMs);
+    if (absMs < 86400000) return formatDurationHours(absMs);
+    return formatDurationDays(absMs);
+}
+
+function formatDurationMinutes(absMs) {
+    const totalSeconds = Math.round(absMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}m`;
+}
+
+function formatDurationHours(absMs) {
+    const totalSeconds = Math.round(absMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}h`;
+}
+
+function formatDurationDays(absMs) {
+    const totalSeconds = Math.round(absMs / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${days}d ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}h`;
 }
 
 /**

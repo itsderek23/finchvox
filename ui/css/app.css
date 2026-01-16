@@ -54,7 +54,7 @@ button:focus-visible {
    ========================================== */
 .timeline-bar {
     position: absolute;
-    height: 22px;
+    height: 20px;
     min-width: 1px;
     transition: all 0.15s ease;
     display: flex;
@@ -73,8 +73,10 @@ button:focus-visible {
 .bar-llm { background: var(--span-llm); }
 .bar-tts { background: var(--span-tts); }
 .bar-turn { background: var(--span-turn); }
+.bar-conversation { background: #3f3f46; }
 
-.selected .timeline-bar {
+.selected .timeline-bar,
+.timeline-bar.selected {
     border: 1px solid white;
     z-index: 10;
 }

@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from finchvox.audio_utils import find_chunks
+
 
 class Trace:
     """
@@ -26,10 +28,12 @@ class Trace:
         self.trace_file = trace_file
         self.trace_id = trace_file.stem.replace("trace_", "")
         self._span_count: Optional[int] = None
+        self._log_count: Optional[int] = None
         self._min_start_nano: Optional[int] = None
         self._max_end_nano: Optional[int] = None
         self._service_name: Optional[str] = None
         self._load_metadata()
+        self._load_log_count()
 
     def _extract_service_name(self, span: dict) -> Optional[str]:
         resource = span.get("resource", {})
@@ -78,10 +82,32 @@ class Trace:
         self._max_end_nano = max_end
         self._service_name = service_name
 
+    def _load_log_count(self):
+        log_file = self.trace_file.parent / f"logs_{self.trace_id}.jsonl"
+        if not log_file.exists():
+            self._log_count = 0
+            return
+
+        try:
+            count = 0
+            with open(log_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        count += 1
+            self._log_count = count
+        except Exception as e:
+            print(f"Error loading log count for trace {self.trace_id}: {e}")
+            self._log_count = 0
+
     @property
     def span_count(self) -> int:
         """Get total span count."""
         return self._span_count or 0
+
+    @property
+    def log_count(self) -> int:
+        """Get total log line count."""
+        return self._log_count or 0
 
     @property
     def start_time(self) -> Optional[float]:
@@ -109,13 +135,25 @@ class Trace:
         """Get service name from first span with resource attributes."""
         return self._service_name
 
+    def get_audio_size_bytes(self) -> Optional[int]:
+        """Return total audio size in bytes, or None if no audio."""
+        traces_base_dir = self.trace_file.parent.parent
+        chunks = find_chunks(traces_base_dir, self.trace_id)
+        if not chunks:
+            return None
+        return sum(chunk_path.stat().st_size for _, chunk_path in chunks)
+
     def to_dict(self) -> dict:
         """Convert to dictionary for API response."""
+        audio_bytes = self.get_audio_size_bytes()
+        audio_size_mb = audio_bytes // (1024 * 1024) if audio_bytes is not None else None
         return {
             "trace_id": self.trace_id,
             "service_name": self.service_name,
             "span_count": self.span_count,
+            "log_count": self.log_count,
             "start_time": self.start_time,
             "end_time": self.end_time,
             "duration_ms": self.duration_ms,
+            "audio_size_mb": audio_size_mb,
         }

@@ -8,6 +8,7 @@ import os
 import sys
 import finchvox
 from dotenv import load_dotenv
+
 from finchvox import FinchvoxProcessor
 from loguru import logger
 from pipecat.adapters.schemas.function_schema import FunctionSchema

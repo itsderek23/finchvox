@@ -11,7 +11,7 @@ const ICONS = {
 
 const ICON_STYLES = {
     default: 'width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-left: 4px; fill: currentColor;',
-    small: 'width: 14px; height: 14px; display: inline-block; vertical-align: top; margin-left: 3px; fill: currentColor;'
+    small: 'width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-left: 3px; fill: currentColor;'
 };
 
 function getIcon(name, style = ICON_STYLES.default) {
@@ -45,6 +45,9 @@ function traceDetailApp() {
         // Copy state
         spanCopied: false,
 
+        // Logs view mixin (state and methods from logs_view.js)
+        ...logsViewMixin(),
+
         // Timeline state
         minTime: 0,
         maxTime: 0,
@@ -72,16 +75,18 @@ function traceDetailApp() {
                 return;
             }
 
+            this.initLogsView();
             await this.loadTraceData();
+            this.loadLogsIfNeeded();
 
-            // Start polling if trace appears to be active
-            const conversationSpan = this.spans.find(s => s.name === 'conversation');
-            const shouldPoll = !conversationSpan || // No conversation span yet - might be created later
-                               (conversationSpan && !conversationSpan.end_time_unix_nano); // Conversation exists but not ended
-
-            if (shouldPoll) {
-                this.startPolling();
-            }
+            // Disabled: Real-time polling not currently supported for logs
+            // const conversationSpan = this.spans.find(s => s.name === 'conversation');
+            // const shouldPoll = !conversationSpan || // No conversation span yet - might be created later
+            //                    (conversationSpan && !conversationSpan.end_time_unix_nano); // Conversation exists but not ended
+            //
+            // if (shouldPoll) {
+            //     this.startPolling();
+            // }
 
             this.initAudioPlayer();
             this.initKeyboardShortcuts();
@@ -192,12 +197,7 @@ function traceDetailApp() {
         },
 
         buildWaterfallTree() {
-            const { childrenMap, rootSpans } = this.buildSpanHierarchy();
-            this.waterfallSpans = this.flattenSpanTree(rootSpans, childrenMap);
-
-            if (this.initializeDefaultExpansion(childrenMap)) {
-                this.waterfallSpans = this.flattenSpanTree(rootSpans, childrenMap);
-            }
+            this.waterfallSpans = [...this.spans].sort((a, b) => a.startMs - b.startMs);
         },
 
         toggleSpanExpansion(span) {
@@ -260,6 +260,54 @@ function traceDetailApp() {
         },
 
 
+        getSpanTypes() {
+            const typeOrder = ['conversation', 'turn', 'stt', 'llm', 'tts'];
+            const presentTypes = new Set(this.spans.map(s => s.name));
+
+            const orderedTypes = typeOrder.filter(type => presentTypes.has(type));
+
+            const otherTypes = [...presentTypes]
+                .filter(type => !typeOrder.includes(type))
+                .sort();
+
+            return [...orderedTypes, ...otherTypes];
+        },
+
+        getSpansByType(type) {
+            return this.spans
+                .filter(s => s.name === type)
+                .sort((a, b) => a.startMs - b.startMs);
+        },
+
+        hasOverlappingLabels(spanType) {
+            const spans = this.getSpansByType(spanType);
+            if (spans.length < 2) return false;
+
+            const totalDuration = this.maxTime - this.minTime;
+            if (totalDuration === 0) return false;
+
+            const minWidthForInternalLabel = 2;
+            const labelOverflowBuffer = 2;
+
+            for (let i = 0; i < spans.length - 1; i++) {
+                const current = spans[i];
+                const next = spans[i + 1];
+
+                const currentWidthPercent = (current.durationMs / totalDuration) * 100;
+                const currentEndPercent = ((current.endMs - this.minTime) / totalDuration) * 100;
+                const nextStartPercent = ((next.startMs - this.minTime) / totalDuration) * 100;
+                const gap = nextStartPercent - currentEndPercent;
+
+                const currentLabelOverflows = currentWidthPercent < minWidthForInternalLabel;
+
+                if (currentLabelOverflows && gap < labelOverflowBuffer) {
+                    return true;
+                }
+            }
+
+            return false;
+        },
+
         getTimelineBarStyle(span) {
             const totalDuration = this.maxTime - this.minTime;
             const startPercent = ((span.startMs - this.minTime) / totalDuration) * 100;
@@ -300,13 +348,7 @@ function traceDetailApp() {
         },
 
         handleRowClick(span) {
-            // Expand span children if not already expanded
-            if (span.childCount > 0 && !this.expandedSpanIds.has(span.span_id_hex)) {
-                this.expandedSpanIds.add(span.span_id_hex);
-                this.buildWaterfallTree();
-            }
-
-            this.selectSpan(span, true);  // Always seek audio when clicking
+            this.selectSpan(span, true);
         },
 
         initAudioPlayer() {
@@ -401,7 +443,7 @@ function traceDetailApp() {
                 tick.style.left = '0';
                 tick.style.bottom = '0';
                 tick.style.width = '1px';
-                tick.style.height = '6px';
+                tick.style.height = '3px';
                 tick.style.backgroundColor = '#6b7280';
 
                 // Create label
@@ -472,6 +514,10 @@ function traceDetailApp() {
 
         handleKeydown(event) {
             if (this.isUserTyping()) return;
+
+            if (this.selectedView === 'logs') {
+                if (this.handleLogsKeydown(event)) return;
+            }
 
             const handlers = {
                 ' ': () => this.togglePlay(),
@@ -621,14 +667,8 @@ function traceDetailApp() {
             }
         },
 
-        handleSpanClick(span, event, clickedOnBadge = false) {
-            if (clickedOnBadge && span.childCount > 0) {
-                // Clicked on badge - toggle expansion
-                this.toggleSpanExpansion(span);
-            } else {
-                // Clicked on row - select span and seek audio if not playing
-                this.selectSpan(span, true);
-            }
+        handleSpanClick(span, event) {
+            this.selectSpan(span, true);
         },
 
         formatTime(seconds) {
@@ -935,7 +975,7 @@ function traceDetailApp() {
 
         // Get hover marker position in pixels
         getMarkerPosition() {
-            if (!this.duration || !this.hoverMarker.visible) return '32px'; // 2rem = 32px
+            if (!this.duration || !this.hoverMarker.visible) return '32px';
 
             const waveform = document.getElementById('waveform');
             if (!waveform) return '32px';
@@ -943,7 +983,7 @@ function traceDetailApp() {
             const waveformWidth = waveform.offsetWidth;
             const percent = this.hoverMarker.time / this.duration;
             const offsetInWaveform = percent * waveformWidth;
-            const totalOffset = 32 + offsetInWaveform; // 32px = 2rem padding
+            const totalOffset = 32 + offsetInWaveform;
 
             return `${totalOffset}px`;
         },
@@ -980,16 +1020,8 @@ function traceDetailApp() {
             this.hideMarkerFromWaterfall();
         },
 
-        // Handle chunk click - delegates to span click handler and expands children
         handleChunkClick(span) {
-            // Expand span children if not already expanded
-            if (span.childCount > 0 && !this.expandedSpanIds.has(span.span_id_hex)) {
-                this.expandedSpanIds.add(span.span_id_hex);
-                this.buildWaterfallTree();
-            }
-
-            // Execute normal click behavior
-            this.handleRowClick(span);
+            this.selectSpan(span, true);
         },
 
         isDataReady() {

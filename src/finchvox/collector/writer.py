@@ -39,7 +39,7 @@ class SpanWriter:
             if is_new_trace:
                 # Log span type for new traces
                 span_name = span.name if span.name else "UNKNOWN"
-                logger.info(f"New trace {trace_id_hex[:8]}... - first span type: {span_name}")
+                logger.info(f"New trace {trace_id_hex} - first span type: {span_name}")
             else:
                 # Count existing spans in the trace
                 with trace_file.open('r') as f:
