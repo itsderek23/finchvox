@@ -79,14 +79,14 @@ function traceDetailApp() {
             await this.loadTraceData();
             this.loadLogsIfNeeded();
 
-            // Start polling if trace appears to be active
-            const conversationSpan = this.spans.find(s => s.name === 'conversation');
-            const shouldPoll = !conversationSpan || // No conversation span yet - might be created later
-                               (conversationSpan && !conversationSpan.end_time_unix_nano); // Conversation exists but not ended
-
-            if (shouldPoll) {
-                this.startPolling();
-            }
+            // Disabled: Real-time polling not currently supported for logs
+            // const conversationSpan = this.spans.find(s => s.name === 'conversation');
+            // const shouldPoll = !conversationSpan || // No conversation span yet - might be created later
+            //                    (conversationSpan && !conversationSpan.end_time_unix_nano); // Conversation exists but not ended
+            //
+            // if (shouldPoll) {
+            //     this.startPolling();
+            // }
 
             this.initAudioPlayer();
             this.initKeyboardShortcuts();
