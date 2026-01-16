@@ -1,6 +1,6 @@
 # <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - elevated debuggability for Voice AI apps
 
-Do your eyes bleed like a Vecna victim watching Pipecat logs fly by when tracing a bug? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps. 
+Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps. 
 
 Finchvox unifies conversation audio, logs, and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
 
