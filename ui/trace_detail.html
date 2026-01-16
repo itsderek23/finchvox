@@ -206,14 +206,17 @@
         <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
             <!-- Filter Bar -->
             <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
-                <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
-                    <input type="text"
-                           x-model="logSearchQuery"
-                           placeholder="Filter logs..."
-                           class="bg-white/5 border border-white/10 rounded pl-9 pr-3 py-1.5 text-xs font-mono text-white placeholder-white/40 focus:outline-none focus:border-white/20 w-64">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                        <input type="text"
+                               x-model="logSearchQuery"
+                               placeholder="Filter logs..."
+                               class="bg-white/5 border border-white/10 rounded pl-9 pr-3 py-1.5 text-xs font-mono text-white placeholder-white/40 focus:outline-none focus:border-white/20 w-64">
+                    </div>
+                    <span x-show="!logsLoading && logs.length > 0" class="text-white/40 text-xs">Showing <span x-text="getFilteredLogs().length"></span> of <span x-text="logs.length"></span> logs<span x-show="logsTotalCount > logsLimit"> (limited to <span x-text="logsLimit"></span>)</span></span>
                 </div>
                 <div class="flex gap-1">
                     <template x-for="level in ['DEBUG', 'INFO', 'WARN', 'ERROR']" :key="level">
@@ -277,10 +280,6 @@
                 </table>
             </div>
 
-            <!-- Log count info -->
-            <div x-show="!logsLoading && logs.length > 0" class="h-8 px-8 border-t border-white/10 text-white/40 text-xs flex items-center">
-                <span>Showing <span x-text="getFilteredLogs().length"></span> of <span x-text="logs.length"></span> logs<span x-show="logsTotalCount > logsLimit"> (limited to <span x-text="logsLimit"></span>)</span></span>
-            </div>
         </div>
     </main>
 
