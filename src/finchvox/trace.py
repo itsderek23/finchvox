@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from finchvox.audio_utils import find_chunks
+
 
 class Trace:
     """
@@ -133,8 +135,18 @@ class Trace:
         """Get service name from first span with resource attributes."""
         return self._service_name
 
+    def get_audio_size_bytes(self) -> Optional[int]:
+        """Return total audio size in bytes, or None if no audio."""
+        traces_base_dir = self.trace_file.parent.parent
+        chunks = find_chunks(traces_base_dir, self.trace_id)
+        if not chunks:
+            return None
+        return sum(chunk_path.stat().st_size for _, chunk_path in chunks)
+
     def to_dict(self) -> dict:
         """Convert to dictionary for API response."""
+        audio_bytes = self.get_audio_size_bytes()
+        audio_size_mb = audio_bytes // (1024 * 1024) if audio_bytes is not None else None
         return {
             "trace_id": self.trace_id,
             "service_name": self.service_name,
@@ -143,4 +155,5 @@ class Trace:
             "start_time": self.start_time,
             "end_time": self.end_time,
             "duration_ms": self.duration_ms,
+            "audio_size_mb": audio_size_mb,
         }

@@ -48,8 +48,8 @@
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Service Name</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Trace ID</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Start Time</th>
-                    <th class="py-4 px-6 text-xs font-medium tracking-wide">End Time</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Duration</th>
+                    <th class="py-4 px-6 text-xs font-medium tracking-wide">Audio</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Spans</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Logs</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide"></th>
@@ -63,8 +63,8 @@
                             <a class="text-amber-400 underline hover:text-amber-300 transition-colors" :href="`/traces/${trace.trace_id}`" x-text="trace.trace_id"></a>
                         </td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.start_time)"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.end_time)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(trace.duration_ms)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.audio_size_mb !== null ? trace.audio_size_mb + ' MB' : '—'"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.span_count)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.log_count)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm">
