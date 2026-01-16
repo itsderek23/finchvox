@@ -164,14 +164,14 @@ function logsViewMixin() {
 
         getLogLevelClass(level) {
             if (!level) return 'text-white/70';
-            const upperLevel = level.toUpperCase();
-            if (upperLevel === 'WARN' || upperLevel === 'WARNING') {
-                return 'text-amber-400';
-            }
-            if (upperLevel === 'ERROR' || upperLevel === 'FATAL' || upperLevel === 'CRITICAL') {
-                return 'text-red-400';
-            }
-            return 'text-white/70';
+            const levelColors = {
+                'WARN': 'text-amber-400',
+                'WARNING': 'text-amber-400',
+                'ERROR': 'text-red-400',
+                'FATAL': 'text-red-400',
+                'CRITICAL': 'text-red-400'
+            };
+            return levelColors[level.toUpperCase()] || 'text-white/70';
         },
 
         getLogBody(log) {
@@ -237,8 +237,12 @@ function logsViewMixin() {
             }
         },
 
+        canHighlightLog(log) {
+            return log?.time_unix_nano && this.traceStartTime && this.duration;
+        },
+
         highlightLog(log) {
-            if (!log?.time_unix_nano || !this.traceStartTime || !this.duration) return;
+            if (!this.canHighlightLog(log)) return;
 
             const relativeNanos = log.time_unix_nano - this.traceStartTime;
             const relativeSeconds = relativeNanos / 1_000_000_000;

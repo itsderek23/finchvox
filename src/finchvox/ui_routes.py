@@ -41,6 +41,14 @@ def _read_jsonl_file(file_path: Path) -> list[dict]:
     return records
 
 
+def _get_trace_start_time(trace_file: Path) -> int | None:
+    """Get the earliest start time from spans in a trace file."""
+    spans = _read_jsonl_file(trace_file)
+    if not spans:
+        return None
+    return min(s.get("start_time_unix_nano", float("inf")) for s in spans)
+
+
 def _get_combined_audio_file(
     data_dir: Path,
     trace_id: str,
@@ -166,12 +174,9 @@ async def _handle_get_logs(data_dir: Path, trace_id: str, limit: int) -> JSONRes
         raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
 
     log_file = trace_dir / f"logs_{trace_id}.jsonl"
+    trace_start_time = _get_trace_start_time(trace_file)
 
     if not log_file.exists():
-        spans = _read_jsonl_file(trace_file)
-        trace_start_time = None
-        if spans:
-            trace_start_time = min(s.get("start_time_unix_nano", float("inf")) for s in spans)
         return JSONResponse({
             "logs": [],
             "total_count": 0,
@@ -185,17 +190,10 @@ async def _handle_get_logs(data_dir: Path, trace_id: str, limit: int) -> JSONRes
         raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
 
     logs.sort(key=lambda l: int(l.get("time_unix_nano", 0)))
-
     total_count = len(logs)
-    logs = logs[:limit]
-
-    spans = _read_jsonl_file(trace_file)
-    trace_start_time = None
-    if spans:
-        trace_start_time = min(s.get("start_time_unix_nano", float("inf")) for s in spans)
 
     return JSONResponse({
-        "logs": logs,
+        "logs": logs[:limit],
         "total_count": total_count,
         "limit": limit,
         "trace_start_time": trace_start_time
