@@ -37,31 +37,11 @@
                     <span x-show="isPolling" class="live-badge">Live</span>
                 </div>
 
-                <!-- Waiting for Audio (Live Trace) -->
-                <div x-show="audioError && isPolling" x-cloak class="flex items-center gap-3 p-4 px-5 mt-24 mx-8 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                    </svg>
-                    <span>
-                        Waiting for audio data... (trace is live)
-                    </span>
-                </div>
-
-                <!-- Audio Error Message (Completed Trace) -->
-                <div x-show="audioError && !isPolling" x-cloak class="flex items-center gap-3 p-4 px-5 mt-24 mx-8 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                    </svg>
-                    <span>
-                        No audio data available. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
-                    </span>
-                </div>
-
                 <!-- Audio Player Section -->
-                <section class="py-4 px-8 border-b border-white/10 bg-white/[0.02]" x-show="!audioError">
+                <section class="py-4 px-8 border-b border-white/10 bg-white/[0.02] h-[236px]">
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <div class="flex items-center gap-4">
-                        <button @click="togglePlay()" class="flex items-center bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer" title="SPACEBAR">
+                        <button @click="!audioError && togglePlay()" :disabled="audioError" class="flex items-center bg-white/5 text-white/40 border border-white/10 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200" :class="audioError ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white/60 cursor-pointer'" title="SPACEBAR">
                             <span x-show="!playing" class="flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
@@ -135,7 +115,15 @@
                 </div>
 
                 <!-- Waveform -->
-                <div id="waveform" class="rounded overflow-hidden border-b border-white/10 h-[81px] mb-1"></div>
+                <div id="waveform" class="rounded overflow-hidden border-b border-white/10 h-[81px] mb-1 relative">
+                    <div x-show="audioError" x-cloak class="absolute inset-0 flex items-center gap-3 px-4 text-orange-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
+                        <span x-show="isPolling">Waiting for audio data... (trace is live)</span>
+                        <span x-show="!isPolling">No audio data available. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.</span>
+                    </div>
+                </div>
 
                 <!-- Bot text chunks -->
                 <div class="relative h-[22px] mb-0 pointer-events-none"
