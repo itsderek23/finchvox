@@ -110,7 +110,7 @@
 
 
                 <!-- Hover Marker Overlay -->
-                <div class="absolute top-[102px] left-0 h-[157px] pointer-events-none z-20" x-show="hoverMarker.visible" :style="`left: ${getMarkerPosition()}`">
+                <div class="absolute top-[108px] left-0 h-[157px] pointer-events-none z-20" x-show="hoverMarker.visible" :style="`left: ${getMarkerPosition()}`">
                     <div class="absolute top-0 left-1/2 -translate-x-1/2 bg-gray-500 text-black py-0.5 px-1.5 rounded-sm text-[10px] font-medium tracking-wide font-mono whitespace-nowrap z-20" x-text="getMarkerTimeLabel()"></div>
                     <div class="absolute top-4 h-[117px] left-0 w-px bg-gray-500"></div>
                 </div>
@@ -178,7 +178,7 @@
                 <template x-for="(spanType, index) in getSpanTypes()" :key="spanType">
                     <div class="flex flex-col gap-1 px-8 py-1" :class="{ 'bg-white/[0.02]': index % 2 === 1 }">
                         <!-- Type Label -->
-                        <div class="text-[11px] text-white/50 font-mono" x-text="spanType"></div>
+                        <div class="text-[11px] text-white/50 font-mono uppercase" x-text="spanType"></div>
 
                         <!-- Timeline Track -->
                         <div class="relative h-5">
@@ -295,7 +295,7 @@
            x-transition:leave-start="translate-x-0"
            x-transition:leave-end="translate-x-full">
             <div class="flex justify-between items-center py-2 px-8 border-b border-white/10 sticky top-0 z-10 bg-[#050507]">
-                <h3 class="text-sm font-semibold tracking-wide" x-text="selectedSpan?.name">Span Details</h3>
+                <h3 class="text-sm font-semibold tracking-wide uppercase" x-text="selectedSpan?.name">Span Details</h3>
                 <button @click="closePanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
             </div>
             <div class="p-8">
