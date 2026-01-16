@@ -155,7 +155,7 @@
             </section>
 
                 <!-- View Tabs -->
-                <div class="flex gap-6 px-8 py-3 bg-[#050507]">
+                <div class="flex gap-6 px-8 py-2 bg-[#050507]">
                     <button @click="switchView('trace')"
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
@@ -170,11 +170,11 @@
             </div><!-- End fixed-container -->
 
     <!-- Trace View -->
-    <main x-show="selectedView === 'trace'" class="flex-1 mt-[328px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
+    <main x-show="selectedView === 'trace'" class="flex-1 mt-[322px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-362px)]">
 
             <!-- Swimlane Body (Scrollable) -->
-            <div class="flex-1 overflow-y-auto overflow-x-visible space-y-4">
+            <div class="flex-1 overflow-y-auto overflow-x-visible space-y-2">
                 <template x-for="(spanType, index) in getSpanTypes()" :key="spanType">
                     <div class="flex flex-col gap-1 px-8 py-1" :class="{ 'bg-white/[0.02]': index % 2 === 1 }">
                         <!-- Type Label -->
@@ -202,8 +202,8 @@
     </main>
 
     <!-- Logs View -->
-    <main x-show="selectedView === 'logs'" class="flex-1 mt-[328px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-338px)]">
+    <main x-show="selectedView === 'logs'" class="flex-1 mt-[322px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
             <!-- Filter Bar -->
             <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
                 <div class="relative">
