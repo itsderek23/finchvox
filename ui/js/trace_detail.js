@@ -975,15 +975,15 @@ function traceDetailApp() {
 
         // Get hover marker position in pixels
         getMarkerPosition() {
-            if (!this.duration || !this.hoverMarker.visible) return '132px'; // 32px padding + 80px label + 20px gap
+            if (!this.duration || !this.hoverMarker.visible) return '32px';
 
             const waveform = document.getElementById('waveform');
-            if (!waveform) return '132px';
+            if (!waveform) return '32px';
 
             const waveformWidth = waveform.offsetWidth;
             const percent = this.hoverMarker.time / this.duration;
             const offsetInWaveform = percent * waveformWidth;
-            const totalOffset = 132 + offsetInWaveform; // 32px padding + 80px label + 20px gap
+            const totalOffset = 32 + offsetInWaveform;
 
             return `${totalOffset}px`;
         },

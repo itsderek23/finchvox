@@ -60,16 +60,32 @@
                 <!-- Audio Player Section -->
                 <section class="py-4 px-8 border-b border-white/10 bg-white/[0.02]" x-show="!audioError">
                 <div class="flex items-center justify-between gap-4 mb-4">
-                    <button @click="togglePlay()" class="h-6 flex items-center bg-transparent hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 border border-zinc-600 rounded px-2.5 py-0.5 text-xs transition-colors focus:outline-none" title="SPACEBAR">
-                        <span x-show="!playing" class="flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                              </svg> <span>Play</span>
-                        </span>
-                        <span x-show="playing" class="flex items-center justify-center gap-2">
-                            <span>⏸</span><span>Pause</span>
-                        </span>
-                    </button>
+                    <div class="flex items-center gap-4">
+                        <button @click="togglePlay()" class="h-6 flex items-center bg-transparent hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 border border-zinc-600 rounded px-2.5 py-0.5 text-xs transition-colors focus:outline-none" title="SPACEBAR">
+                            <span x-show="!playing" class="flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                  </svg> <span>Play</span>
+                            </span>
+                            <span x-show="playing" class="flex items-center justify-center gap-2">
+                                <span>⏸</span><span>Pause</span>
+                            </span>
+                        </button>
+                        <div class="flex items-center gap-4 text-xs">
+                            <span class="text-[#f97316] flex items-center gap-1.5">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M1 10v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-2 0zM6 6v12a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0zM21 10v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-2 0zM16 6v12a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0zM11 2v20a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0z"/>
+                                </svg>
+                                User
+                            </span>
+                            <span class="text-[#a855f7] flex items-center gap-1.5">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M1 10v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-2 0zM6 6v12a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0zM21 10v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-2 0zM16 6v12a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0zM11 2v20a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0z"/>
+                                </svg>
+                                Agent
+                            </span>
+                        </div>
+                    </div>
                     <div class="flex items-center gap-4">
                         <span class="text-xs">
                             <span class="text-white/70" x-text="formatTime(currentTime)">00:00</span>
@@ -100,66 +116,41 @@
                 </div>
 
                 <!-- Timeline -->
-                <div class="flex gap-5">
-                    <div class="w-20 shrink-0"></div>
-                    <div id="timeline" class="flex-1 h-6 mb-1 border-b border-white/10 pb-0.5"></div>
-                </div>
+                <div id="timeline" class="h-6 mb-1 border-b border-white/10 pb-0.5"></div>
 
                 <!-- Human text chunks -->
-                <div class="flex gap-5 h-[22px] mb-1"
+                <div class="relative h-[22px] mb-1 pointer-events-none"
                     x-show="getTurnChunks().length > 0">
-                    <div class="w-20 shrink-0"></div>
-                    <div class="flex-1 relative pointer-events-none">
-                        <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
-                            <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
-                                x-show="chunk.humanText"
-                                :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
-                                :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
-                                @mouseenter="highlightSpanFromChunk(chunk.span)"
-                                @mouseleave="unhighlightSpanFromChunk()"
-                                @click="handleChunkClick(chunk.span)">
-                                <span class="text-[10px] leading-[10px]" x-text="chunk.humanText"></span>
-                            </div>
-                        </template>
-                    </div>
+                    <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
+                        <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
+                            x-show="chunk.humanText"
+                            :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
+                            :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
+                            @mouseenter="highlightSpanFromChunk(chunk.span)"
+                            @mouseleave="unhighlightSpanFromChunk()"
+                            @click="handleChunkClick(chunk.span)">
+                            <span class="text-[10px] leading-[10px]" x-text="chunk.humanText"></span>
+                        </div>
+                    </template>
                 </div>
 
-                <!-- Waveform with channel labels -->
-                <div class="flex gap-5 mb-1">
-                    <div class="w-20 shrink-0 flex flex-col justify-around text-[11px] font-mono">
-                        <span class="text-[#f97316] flex items-center justify-end gap-1.5">
-                            User
-                            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                            </svg>
-                        </span>
-                        <span class="text-[#a855f7] flex items-center justify-end gap-1.5">
-                            Agent
-                            <svg class="w-4 h-4" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M8.48 4h4l.5.5v2.03h.52l.5.5V8l-.5.5h-.52v3l-.5.5H9.36l-2.5 2.76L6 14.4V12H3.5l-.5-.64V8.5h-.5L2 8v-.97l.5-.5H3V4.36L3.53 4h4V2.86A1 1 0 0 1 7 2a1 1 0 0 1 2 0 1 1 0 0 1-.52.83V4zM12 8V5H4v5.86l2.5.14H7v2.19l1.8-2.04.35-.15H12V8zm-2.12.51a2.71 2.71 0 0 1-1.37.74v-.01a2.71 2.71 0 0 1-2.42-.74l-.7.71c.34.34.745.608 1.19.79.45.188.932.286 1.42.29a3.7 3.7 0 0 0 2.58-1.07l-.7-.71zM6.49 6.5h-1v1h1v-1zm3 0h1v1h-1v-1z"/>
-                            </svg>
-                        </span>
-                    </div>
-                    <div id="waveform" class="flex-1 rounded overflow-hidden border-b border-white/10 h-[81px]"></div>
-                </div>
+                <!-- Waveform -->
+                <div id="waveform" class="rounded overflow-hidden border-b border-white/10 h-[81px] mb-1"></div>
 
                 <!-- Bot text chunks -->
-                <div class="flex gap-5 h-[22px] mb-0"
+                <div class="relative h-[22px] mb-0 pointer-events-none"
                     x-show="getTurnChunks().length > 0">
-                    <div class="w-20 shrink-0"></div>
-                    <div class="flex-1 relative pointer-events-none">
-                        <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
-                            <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
-                                x-show="chunk.botText"
-                                :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
-                                :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
-                                @mouseenter="highlightSpanFromChunk(chunk.span)"
-                                @mouseleave="unhighlightSpanFromChunk()"
-                                @click="handleChunkClick(chunk.span)">
-                                <span class="text-[10px] leading-[10px]" x-html="formatBotChunkText(chunk)"></span>
-                            </div>
-                        </template>
-                    </div>
+                    <template x-for="chunk in getTurnChunks()" :key="chunk.span_id_hex">
+                        <div class="absolute h-5 px-1.5 flex items-center bg-white/5 rounded-sm overflow-hidden whitespace-nowrap pointer-events-auto cursor-pointer transition-colors border border-black text-ellipsis text-white/70 hover:bg-[#3a3a3a]"
+                            x-show="chunk.botText"
+                            :class="{ 'bg-[#3a3a3a]': hoveredSpan?.span_id_hex === chunk.span_id_hex }"
+                            :style="`left: ${chunk.style.left}; max-width: ${chunk.style.width}`"
+                            @mouseenter="highlightSpanFromChunk(chunk.span)"
+                            @mouseleave="unhighlightSpanFromChunk()"
+                            @click="handleChunkClick(chunk.span)">
+                            <span class="text-[10px] leading-[10px]" x-html="formatBotChunkText(chunk)"></span>
+                        </div>
+                    </template>
                 </div>
             </section>
 
@@ -183,14 +174,14 @@
         <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-368px)]">
 
             <!-- Swimlane Body (Scrollable) -->
-            <div class="flex-1 overflow-y-auto overflow-x-visible px-8 space-y-[10px]">
-                <template x-for="spanType in getSpanTypes()" :key="spanType">
-                    <div class="h-6 flex items-center gap-5">
+            <div class="flex-1 overflow-y-auto overflow-x-visible space-y-4">
+                <template x-for="(spanType, index) in getSpanTypes()" :key="spanType">
+                    <div class="flex flex-col gap-1 px-8 py-1" :class="{ 'bg-white/[0.02]': index % 2 === 1 }">
                         <!-- Type Label -->
-                        <div class="w-20 shrink-0 text-[11px] text-white/50 font-mono text-right" x-text="spanType"></div>
+                        <div class="text-[11px] text-white/50 font-mono" x-text="spanType"></div>
 
                         <!-- Timeline Track -->
-                        <div class="flex-1 relative h-5">
+                        <div class="relative h-5">
                             <template x-for="span in getSpansByType(spanType)" :key="span.span_id_hex">
                                 <div class="timeline-bar cursor-pointer"
                                      :class="`bar-${span.name} ${(highlightedSpan?.span_id_hex === span.span_id_hex || selectedSpan?.span_id_hex === span.span_id_hex || chunkHoveredSpan?.span_id_hex === span.span_id_hex) ? 'selected' : ''}`"
