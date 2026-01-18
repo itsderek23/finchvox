@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from loguru import logger
 from google.protobuf.json_format import MessageToDict
-from finchvox.collector.config import get_trace_dir
+from finchvox.collector.config import get_session_dir
 
 
 class LogWriter:
@@ -21,12 +21,12 @@ class LogWriter:
 
         try:
             trace_id_hex = trace_id_bytes.hex()
-            trace_dir = get_trace_dir(self.data_dir, trace_id_hex)
-            trace_dir.mkdir(parents=True, exist_ok=True)
+            session_dir = get_session_dir(self.data_dir, trace_id_hex)
+            session_dir.mkdir(parents=True, exist_ok=True)
 
             log_dict = self._convert_log_to_dict(log_record, resource_logs, scope_logs)
 
-            log_file = trace_dir / f"logs_{trace_id_hex}.jsonl"
+            log_file = session_dir / f"logs_{trace_id_hex}.jsonl"
             with log_file.open('a') as f:
                 json.dump(log_dict, f)
                 f.write('\n')

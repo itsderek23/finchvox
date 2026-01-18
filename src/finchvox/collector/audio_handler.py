@@ -11,7 +11,7 @@ from typing import Optional
 
 import aiofiles
 from loguru import logger
-from finchvox.collector.config import get_trace_audio_dir
+from finchvox.collector.config import get_session_audio_dir
 
 
 class AudioHandler:
@@ -39,11 +39,11 @@ class AudioHandler:
 
         Directory structure:
         data_dir/
-          traces/
-            {trace_id}/
+          sessions/
+            {session_id}/
               audio/
                 chunk_0000.wav
-                chunk_0000.json  # metadata
+                chunk_0000.json
                 chunk_0001.wav
                 chunk_0001.json
 
@@ -63,7 +63,7 @@ class AudioHandler:
                 return None
 
             # Create trace-specific audio directory
-            trace_audio_dir = get_trace_audio_dir(self.data_dir, trace_id)
+            trace_audio_dir = get_session_audio_dir(self.data_dir, trace_id)
             trace_audio_dir.mkdir(exist_ok=True, parents=True)
 
             # Generate filenames with zero-padded chunk number
@@ -118,7 +118,7 @@ class AudioHandler:
         except ValueError:
             return False
 
-    def get_trace_audio_dir(self, trace_id: str) -> Path:
+    def get_session_audio_dir(self, trace_id: str) -> Path:
         """
         Get directory path for a trace's audio files.
 
@@ -128,7 +128,7 @@ class AudioHandler:
         Returns:
             Path to trace-specific audio directory
         """
-        return get_trace_audio_dir(self.data_dir, trace_id)
+        return get_session_audio_dir(self.data_dir, trace_id)
 
     def list_chunks(self, trace_id: str) -> list[Path]:
         """
@@ -140,7 +140,7 @@ class AudioHandler:
         Returns:
             Sorted list of audio file paths for the trace
         """
-        trace_dir = self.get_trace_audio_dir(trace_id)
+        trace_dir = self.get_session_audio_dir(trace_id)
         if not trace_dir.exists():
             return []
         return sorted(trace_dir.glob("chunk_*.wav"))

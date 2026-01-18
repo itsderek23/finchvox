@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trace Detail - Finchvox</title>
+    <title>Session Detail - Finchvox</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,7 +23,7 @@
     <script defer src="/lib/alpine.min.js"></script>
     <script src="/lib/wavesurfer.min.js"></script>
 </head>
-<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="traceDetailApp()" x-init="init()">
+<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="sessionDetailApp()" x-init="init()">
 
     <!-- Main flex container for content and side panel -->
     <div class="flex flex-1 overflow-y-hidden overflow-x-visible relative">
@@ -33,7 +33,7 @@
             <div class="fixed top-0 left-0 z-[100] bg-[#050507]" :class="{ 'right-[400px]': isPanelOpen || isLogPanelOpen, 'right-0': !isPanelOpen && !isLogPanelOpen }">
                 <!-- Back button -->
                 <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
-                    <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto"> <a href="/" class="text-amber-400 underline hover:text-amber-300 transition-colors">Traces</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="traceId">loading...</span>
+                    <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto"> <a href="/" class="text-amber-400 underline hover:text-amber-300 transition-colors">Sessions</a> / <span x-show="serviceName" x-text="serviceName"></span> <span x-show="serviceName">/ </span><span x-text="sessionId">loading...</span>
                     <span x-show="isPolling" class="live-badge">Live</span>
                 </div>
 
@@ -72,7 +72,7 @@
                             <span class="text-white/40">/</span>
                             <span class="text-white/70" x-text="formatTime(duration)">00:00</span>
                         </span>
-                        <a :href="'/api/trace/' + traceId + '/raw'" target="_blank" class="flex items-center bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="View raw trace data">
+                        <a :href="'/api/sessions/' + sessionId + '/trace/raw'" target="_blank" class="flex items-center bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="View raw trace data">
                             <span class="flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
@@ -80,7 +80,7 @@
                                 <span>Raw</span>
                             </span>
                         </a>
-                        <a :href="'/api/audio/' + traceId + '/download'" download class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="Download Audio">
+                        <a :href="'/api/sessions/' + sessionId + '/audio/download'" download class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="Download Audio">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                             </svg>
@@ -120,7 +120,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                         </svg>
-                        <span x-show="isPolling">Waiting for audio data... (trace is live)</span>
+                        <span x-show="isPolling">Waiting for audio data... (session is live)</span>
                         <span x-show="!isPolling">No audio data available. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.</span>
                     </div>
                 </div>
@@ -144,15 +144,15 @@
 
                 <!-- View Tabs -->
                 <div class="flex gap-6 px-8 py-2 bg-[#050507]">
-                    <button @click="switchView('trace')"
-                            class="pb-1 text-sm font-medium transition-colors border-b-2"
-                            :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
-                        Trace
-                    </button>
                     <button @click="switchView('logs')"
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'logs' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
                         Logs
+                    </button>
+                    <button @click="switchView('trace')"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Trace
                     </button>
                 </div>
             </div><!-- End fixed-container -->
@@ -225,7 +225,7 @@
 
             <!-- Empty state -->
             <div x-show="!logsLoading && logs.length === 0" class="flex-1 flex items-center justify-center">
-                <span class="text-white/40">No logs for this trace</span>
+                <span class="text-white/40">No logs for this session</span>
             </div>
 
             <!-- No matches state -->
@@ -429,6 +429,6 @@
 
     <script src="/js/time-utils.js"></script>
     <script src="/js/logs_view.js"></script>
-    <script src="/js/trace_detail.js"></script>
+    <script src="/js/session_detail.js"></script>
 </body>
 </html>

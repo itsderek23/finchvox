@@ -1,7 +1,7 @@
 function logsViewMixin() {
     return {
         logCopied: false,
-        selectedView: 'trace',
+        selectedView: 'logs',
         logs: [],
         selectedLog: null,
         highlightedLogIndex: -1,
@@ -20,8 +20,8 @@ function logsViewMixin() {
 
         initLogsView() {
             const hash = window.location.hash.slice(1);
-            if (hash === 'logs') {
-                this.selectedView = 'logs';
+            if (hash === 'trace') {
+                this.selectedView = 'trace';
             }
         },
 
@@ -71,7 +71,7 @@ function logsViewMixin() {
             this.logsLoading = true;
 
             try {
-                const response = await fetch(`/api/logs/${this.traceId}?limit=${this.logsLimit}`);
+                const response = await fetch(`/api/sessions/${this.sessionId}/logs?limit=${this.logsLimit}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();

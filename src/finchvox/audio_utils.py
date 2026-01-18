@@ -12,53 +12,28 @@ from typing import List, Tuple
 from loguru import logger
 
 
-def find_chunks(audio_dir: Path, trace_id: str) -> List[Tuple[int, Path]]:
+def find_chunks(sessions_dir: Path, session_id: str) -> List[Tuple[int, Path]]:
     """
-    Find all audio chunks for a given trace_id.
+    Find all audio chunks for a given session_id.
 
     Args:
-        audio_dir: Directory containing audio chunks (can be old or new structure)
-        trace_id: Trace ID to search for
+        sessions_dir: Base sessions directory (e.g., ~/.finchvox/sessions)
+        session_id: Session ID to search for
 
     Returns:
         List of (chunk_number, chunk_path) tuples, sorted by chunk number
     """
     chunks = []
 
-    # New structure: traces/{trace_id}/audio/chunk_XXXX.wav
-    new_structure_dir = audio_dir / trace_id / "audio"
-    if new_structure_dir.exists():
-        for chunk_file in new_structure_dir.glob("chunk_*.wav"):
-            # Extract chunk number from filename: chunk_0001.wav -> 1
-            try:
-                chunk_num = int(chunk_file.stem.split("_")[1])
-                chunks.append((chunk_num, chunk_file))
-            except (IndexError, ValueError) as e:
-                logger.warning(f"Could not parse chunk number from {chunk_file}: {e}")
-
-    # Old structure (for backward compatibility): audio/{trace_id}/chunk_XXXX.wav
-    old_structure_dir = audio_dir / trace_id
-    if old_structure_dir.exists() and old_structure_dir != new_structure_dir.parent:
-        for chunk_file in old_structure_dir.glob("chunk_*.wav"):
-            # Extract chunk number from filename: chunk_0001.wav -> 1
-            try:
-                chunk_num = int(chunk_file.stem.split("_")[1])
-                chunks.append((chunk_num, chunk_file))
-            except (IndexError, ValueError) as e:
-                logger.warning(f"Could not parse chunk number from {chunk_file}: {e}")
-
-    # Also check local fallback format: audio_{trace_id}_..._chunkXXXX.wav
+    audio_dir = sessions_dir / session_id / "audio"
     if audio_dir.exists():
-        for chunk_file in audio_dir.glob(f"audio_{trace_id}*_chunk*.wav"):
+        for chunk_file in audio_dir.glob("chunk_*.wav"):
             try:
-                # Extract chunk number from filename
-                chunk_part = chunk_file.stem.split("_chunk")[1]
-                chunk_num = int(chunk_part)
+                chunk_num = int(chunk_file.stem.split("_")[1])
                 chunks.append((chunk_num, chunk_file))
             except (IndexError, ValueError) as e:
                 logger.warning(f"Could not parse chunk number from {chunk_file}: {e}")
 
-    # Sort by chunk number and remove duplicates
     chunks = list(set(chunks))
     chunks.sort(key=lambda x: x[0])
     return chunks

@@ -51,7 +51,7 @@ def test_write_span_creates_file(tmp_path):
 
     # Verify file created with correct name
     trace_id_hex = span.trace_id.hex()
-    trace_file = tmp_path / "traces" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
+    trace_file = tmp_path / "sessions" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
     assert trace_file.exists(), f"Expected file {trace_file} to exist"
 
     # Verify JSON content
@@ -88,7 +88,7 @@ def test_write_multiple_spans_same_trace(tmp_path):
 
     # Verify both spans are in the same file
     trace_id_hex = trace_id.hex()
-    trace_file = tmp_path / "traces" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
+    trace_file = tmp_path / "sessions" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
     assert trace_file.exists()
 
     with trace_file.open() as f:
@@ -134,7 +134,7 @@ def test_span_json_fields_preserved(tmp_path):
 
     # Read and verify JSON
     trace_id_hex = span.trace_id.hex()
-    trace_file = tmp_path / "traces" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
+    trace_file = tmp_path / "sessions" / trace_id_hex / f"trace_{trace_id_hex}.jsonl"
     with trace_file.open() as f:
         data = json.loads(f.readline())
 
@@ -171,7 +171,7 @@ def test_trace_id_hex_conversion(tmp_path):
     writer.write_span(span, resource_spans, scope_spans)
 
     # Verify filename uses correct hex conversion
-    trace_file = tmp_path / "traces" / expected_hex / f"trace_{expected_hex}.jsonl"
+    trace_file = tmp_path / "sessions" / expected_hex / f"trace_{expected_hex}.jsonl"
     assert trace_file.exists(), f"Expected file with hex name {expected_hex}"
 
     # Verify hex value in JSON

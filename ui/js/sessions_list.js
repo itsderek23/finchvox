@@ -1,26 +1,26 @@
-function tracesListApp() {
+function sessionsListApp() {
     return {
-        traces: [],
+        sessions: [],
         dataDir: '',
 
         async init() {
-            await this.loadTraces();
+            await this.loadSessions();
         },
 
-        async loadTraces() {
+        async loadSessions() {
             try {
-                const response = await fetch('/api/traces');
+                const response = await fetch('/api/sessions');
                 const data = await response.json();
-                this.traces = data.traces || [];
+                this.sessions = data.sessions || [];
                 this.dataDir = data.data_dir || '';
             } catch (error) {
-                console.error('Failed to load traces:', error);
+                console.error('Failed to load sessions:', error);
             }
         },
 
         formatDuration(milliseconds) {
             if (!milliseconds) return '-';
-            return formatDuration(milliseconds, 0);  // Uses time-utils.js
+            return formatDuration(milliseconds, 0);
         },
 
         formatCount(count) {
