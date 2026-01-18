@@ -92,38 +92,28 @@ async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
     return JSONResponse({"sessions": sessions, "data_dir": str(sessions_base_dir)})
 
 
-async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResponse:
+def _get_session_spans(data_dir: Path, session_id: str) -> list[dict]:
     session_dir = get_session_dir(data_dir, session_id)
     trace_file = session_dir / f"trace_{session_id}.jsonl"
-
     if not trace_file.exists():
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
     try:
-        spans = _read_jsonl_file(trace_file)
+        return _read_jsonl_file(trace_file)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading trace: {str(e)}")
 
+
+async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResponse:
+    spans = _get_session_spans(data_dir, session_id)
     last_span_time = None
     for span in spans:
         if "end_time_unix_nano" in span:
             last_span_time = span["end_time_unix_nano"]
-
     return JSONResponse({"spans": spans, "last_span_time": last_span_time})
 
 
 async def _handle_get_session_trace_raw(data_dir: Path, session_id: str) -> JSONResponse:
-    session_dir = get_session_dir(data_dir, session_id)
-    trace_file = session_dir / f"trace_{session_id}.jsonl"
-
-    if not trace_file.exists():
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    try:
-        spans = _read_jsonl_file(trace_file)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading trace: {str(e)}")
-
+    spans = _get_session_spans(data_dir, session_id)
     return JSONResponse(
         content=spans,
         media_type="application/json",
