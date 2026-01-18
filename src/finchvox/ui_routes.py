@@ -1,9 +1,3 @@
-"""
-UI routes for FinchVox Trace Viewer.
-
-Serves the web UI and provides REST APIs for trace data.
-"""
-
 import json
 import tempfile
 from pathlib import Path
@@ -14,13 +8,12 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from finchvox.audio_utils import find_chunks, combine_chunks
-from finchvox.trace import Trace
+from finchvox.session import Session
 from finchvox.collector.config import (
-    get_traces_base_dir,
-    get_trace_dir,
-    get_trace_logs_dir,
-    get_trace_audio_dir,
-    get_trace_exceptions_dir,
+    get_sessions_base_dir,
+    get_session_dir,
+    get_session_audio_dir,
+    get_session_exceptions_dir,
     get_default_data_dir
 )
 
@@ -32,7 +25,6 @@ if not UI_DIR.exists():
 
 
 def _read_jsonl_file(file_path: Path) -> list[dict]:
-    """Read a JSONL file and return list of parsed JSON objects."""
     records = []
     with open(file_path, 'r') as f:
         for line in f:
@@ -42,7 +34,6 @@ def _read_jsonl_file(file_path: Path) -> list[dict]:
 
 
 def _get_trace_start_time(trace_file: Path) -> int | None:
-    """Get the earliest start time from spans in a trace file."""
     spans = _read_jsonl_file(trace_file)
     if not spans:
         return None
@@ -51,26 +42,20 @@ def _get_trace_start_time(trace_file: Path) -> int | None:
 
 def _get_combined_audio_file(
     data_dir: Path,
-    trace_id: str,
+    session_id: str,
     background_tasks: BackgroundTasks
 ) -> Path:
-    """
-    Combine audio chunks for a trace into a temporary WAV file.
-
-    Schedules cleanup of the temp file after response is sent.
-    Raises HTTPException if audio not found.
-    """
-    audio_dir = get_trace_audio_dir(data_dir, trace_id)
+    audio_dir = get_session_audio_dir(data_dir, session_id)
     if not audio_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Audio for trace {trace_id} not found")
+        raise HTTPException(status_code=404, detail=f"Audio for session {session_id} not found")
 
-    logger.info(f"Finding audio chunks for trace {trace_id}")
-    chunks = find_chunks(get_traces_base_dir(data_dir), trace_id)
+    logger.info(f"Finding audio chunks for session {session_id}")
+    chunks = find_chunks(get_sessions_base_dir(data_dir), session_id)
 
     if not chunks:
-        raise HTTPException(status_code=404, detail=f"No audio chunks found for trace {trace_id}")
+        raise HTTPException(status_code=404, detail=f"No audio chunks found for session {session_id}")
 
-    logger.info(f"Found {len(chunks)} chunks for trace {trace_id}")
+    logger.info(f"Found {len(chunks)} chunks for session {session_id}")
 
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
         tmp_path = Path(tmp.name)
@@ -81,67 +66,54 @@ def _get_combined_audio_file(
     return tmp_path
 
 
-async def _handle_list_traces(traces_base_dir: Path) -> JSONResponse:
-    """List all available traces."""
-    if not traces_base_dir.exists():
-        return JSONResponse({"traces": [], "data_dir": str(traces_base_dir)})
+async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
+    if not sessions_base_dir.exists():
+        return JSONResponse({"sessions": [], "data_dir": str(sessions_base_dir)})
 
-    traces = []
-    for trace_dir in traces_base_dir.iterdir():
-        if not trace_dir.is_dir():
+    sessions = []
+    for session_dir in sessions_base_dir.iterdir():
+        if not session_dir.is_dir():
             continue
 
-        trace_id = trace_dir.name
-        trace_file = trace_dir / f"trace_{trace_id}.jsonl"
+        session_id = session_dir.name
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
 
         if not trace_file.exists():
             continue
 
         try:
-            trace = Trace(trace_file)
-            traces.append(trace.to_dict())
+            session = Session(session_dir)
+            sessions.append(session.to_dict())
         except Exception as e:
-            print(f"Error reading trace file {trace_file}: {e}")
+            print(f"Error reading session {session_dir}: {e}")
             continue
 
-    traces.sort(key=lambda t: t.get("start_time") or 0, reverse=True)
-    return JSONResponse({"traces": traces, "data_dir": str(traces_base_dir)})
+    sessions.sort(key=lambda s: s.get("start_time") or 0, reverse=True)
+    return JSONResponse({"sessions": sessions, "data_dir": str(sessions_base_dir)})
 
 
-async def _handle_get_trace(data_dir: Path, trace_id: str) -> JSONResponse:
-    """Get all spans for a specific trace."""
-    trace_dir = get_trace_dir(data_dir, trace_id)
-    trace_file = trace_dir / f"trace_{trace_id}.jsonl"
-
+def _get_session_spans(data_dir: Path, session_id: str) -> list[dict]:
+    session_dir = get_session_dir(data_dir, session_id)
+    trace_file = session_dir / f"trace_{session_id}.jsonl"
     if not trace_file.exists():
-        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
-
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
     try:
-        spans = _read_jsonl_file(trace_file)
+        return _read_jsonl_file(trace_file)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading trace: {str(e)}")
 
+
+async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResponse:
+    spans = _get_session_spans(data_dir, session_id)
     last_span_time = None
     for span in spans:
         if "end_time_unix_nano" in span:
             last_span_time = span["end_time_unix_nano"]
-
     return JSONResponse({"spans": spans, "last_span_time": last_span_time})
 
 
-async def _handle_get_trace_raw(data_dir: Path, trace_id: str) -> JSONResponse:
-    """Get raw trace data as a formatted JSON array."""
-    trace_dir = get_trace_dir(data_dir, trace_id)
-    trace_file = trace_dir / f"trace_{trace_id}.jsonl"
-
-    if not trace_file.exists():
-        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
-
-    try:
-        spans = _read_jsonl_file(trace_file)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading trace: {str(e)}")
-
+async def _handle_get_session_trace_raw(data_dir: Path, session_id: str) -> JSONResponse:
+    spans = _get_session_spans(data_dir, session_id)
     return JSONResponse(
         content=spans,
         media_type="application/json",
@@ -153,7 +125,6 @@ async def _handle_get_jsonl_records(
     file_path: Path,
     response_key: str
 ) -> JSONResponse:
-    """Get records from a JSONL file for a specific trace."""
     if not file_path.exists():
         return JSONResponse({response_key: []})
 
@@ -165,15 +136,14 @@ async def _handle_get_jsonl_records(
     return JSONResponse({response_key: records})
 
 
-async def _handle_get_logs(data_dir: Path, trace_id: str, limit: int) -> JSONResponse:
-    """Get logs for a specific trace with sorting and limiting."""
-    trace_dir = get_trace_dir(data_dir, trace_id)
-    trace_file = trace_dir / f"trace_{trace_id}.jsonl"
+async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) -> JSONResponse:
+    session_dir = get_session_dir(data_dir, session_id)
+    trace_file = session_dir / f"trace_{session_id}.jsonl"
 
     if not trace_file.exists():
-        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    log_file = trace_dir / f"logs_{trace_id}.jsonl"
+    log_file = session_dir / f"logs_{session_id}.jsonl"
     trace_start_time = _get_trace_start_time(trace_file)
 
     if not log_file.exists():
@@ -200,31 +170,29 @@ async def _handle_get_logs(data_dir: Path, trace_id: str, limit: int) -> JSONRes
     })
 
 
-async def _handle_get_audio(
+async def _handle_get_session_audio(
     data_dir: Path,
-    trace_id: str,
+    session_id: str,
     background_tasks: BackgroundTasks,
     as_download: bool = False
 ) -> FileResponse:
-    """Get or download combined audio for a specific trace."""
-    tmp_path = _get_combined_audio_file(data_dir, trace_id, background_tasks)
+    tmp_path = _get_combined_audio_file(data_dir, session_id, background_tasks)
     disposition = "attachment" if as_download else "inline"
 
     return FileResponse(
         str(tmp_path),
         media_type="audio/wav",
-        headers={"Content-Disposition": f"{disposition}; filename=trace_{trace_id}.wav"}
+        headers={"Content-Disposition": f"{disposition}; filename=session_{session_id}.wav"}
     )
 
 
-async def _handle_get_audio_status(data_dir: Path, trace_id: str) -> JSONResponse:
-    """Get audio metadata without combining chunks."""
-    audio_dir = get_trace_audio_dir(data_dir, trace_id)
+async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> JSONResponse:
+    audio_dir = get_session_audio_dir(data_dir, session_id)
 
     if not audio_dir.exists():
         return JSONResponse({"chunk_count": 0, "last_modified": None})
 
-    chunks = find_chunks(get_traces_base_dir(data_dir), trace_id)
+    chunks = find_chunks(get_sessions_base_dir(data_dir), session_id)
 
     last_modified = None
     if chunks:
@@ -234,11 +202,10 @@ async def _handle_get_audio_status(data_dir: Path, trace_id: str) -> JSONRespons
 
 
 def register_ui_routes(app: FastAPI, data_dir: Path = None):
-    """Register UI routes and static file serving on an existing FastAPI app."""
     if data_dir is None:
         data_dir = get_default_data_dir()
 
-    traces_base_dir = get_traces_base_dir(data_dir)
+    sessions_base_dir = get_sessions_base_dir(data_dir)
 
     app.mount("/css", StaticFiles(directory=str(UI_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(UI_DIR / "js")), name="js")
@@ -251,41 +218,41 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/")
     async def index():
-        return FileResponse(str(UI_DIR / "traces_list.html"))
+        return FileResponse(str(UI_DIR / "sessions_list.html"))
 
-    @app.get("/traces/{trace_id}")
-    async def trace_detail_page(trace_id: str):
-        return FileResponse(str(UI_DIR / "trace_detail.html"))
+    @app.get("/sessions/{session_id}")
+    async def session_detail_page(session_id: str):
+        return FileResponse(str(UI_DIR / "session_detail.html"))
 
-    @app.get("/api/traces")
-    async def list_traces() -> JSONResponse:
-        return await _handle_list_traces(traces_base_dir)
+    @app.get("/api/sessions")
+    async def list_sessions() -> JSONResponse:
+        return await _handle_list_sessions(sessions_base_dir)
 
-    @app.get("/api/trace/{trace_id}")
-    async def get_trace(trace_id: str) -> JSONResponse:
-        return await _handle_get_trace(data_dir, trace_id)
+    @app.get("/api/sessions/{session_id}/trace")
+    async def get_session_trace(session_id: str) -> JSONResponse:
+        return await _handle_get_session_trace(data_dir, session_id)
 
-    @app.get("/api/trace/{trace_id}/raw")
-    async def get_trace_raw(trace_id: str) -> JSONResponse:
-        return await _handle_get_trace_raw(data_dir, trace_id)
+    @app.get("/api/sessions/{session_id}/trace/raw")
+    async def get_session_trace_raw(session_id: str) -> JSONResponse:
+        return await _handle_get_session_trace_raw(data_dir, session_id)
 
-    @app.get("/api/logs/{trace_id}")
-    async def get_logs(trace_id: str, limit: int = 1000) -> JSONResponse:
-        return await _handle_get_logs(data_dir, trace_id, limit)
+    @app.get("/api/sessions/{session_id}/logs")
+    async def get_session_logs(session_id: str, limit: int = 1000) -> JSONResponse:
+        return await _handle_get_session_logs(data_dir, session_id, limit)
 
-    @app.get("/api/exceptions/{trace_id}")
-    async def get_exceptions(trace_id: str) -> JSONResponse:
-        exceptions_file = get_trace_exceptions_dir(data_dir, trace_id) / f"exceptions_{trace_id}.jsonl"
+    @app.get("/api/sessions/{session_id}/exceptions")
+    async def get_session_exceptions(session_id: str) -> JSONResponse:
+        exceptions_file = get_session_exceptions_dir(data_dir, session_id) / f"exceptions_{session_id}.jsonl"
         return await _handle_get_jsonl_records(exceptions_file, "exceptions")
 
-    @app.get("/api/audio/{trace_id}")
-    async def get_audio(trace_id: str, background_tasks: BackgroundTasks):
-        return await _handle_get_audio(data_dir, trace_id, background_tasks)
+    @app.get("/api/sessions/{session_id}/audio")
+    async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
+        return await _handle_get_session_audio(data_dir, session_id, background_tasks)
 
-    @app.get("/api/audio/{trace_id}/download")
-    async def download_audio(trace_id: str, background_tasks: BackgroundTasks):
-        return await _handle_get_audio(data_dir, trace_id, background_tasks, as_download=True)
+    @app.get("/api/sessions/{session_id}/audio/download")
+    async def download_session_audio(session_id: str, background_tasks: BackgroundTasks):
+        return await _handle_get_session_audio(data_dir, session_id, background_tasks, as_download=True)
 
-    @app.get("/api/audio/{trace_id}/status")
-    async def get_audio_status(trace_id: str) -> JSONResponse:
-        return await _handle_get_audio_status(data_dir, trace_id)
+    @app.get("/api/sessions/{session_id}/audio/status")
+    async def get_session_audio_status(session_id: str) -> JSONResponse:
+        return await _handle_get_session_audio_status(data_dir, session_id)

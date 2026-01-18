@@ -19,10 +19,9 @@ function getIcon(name, style = ICON_STYLES.default) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${icon.viewBox}" style="${style}"><path d="${icon.path}"/></svg>`;
 }
 
-function traceDetailApp() {
+function sessionDetailApp() {
     return {
-        // State
-        traceId: null,
+        sessionId: null,
         serviceName: null,      // Service name from first span with resource.attributes
         spans: [],              // Original spans from API
         waterfallSpans: [],     // Flat array in display order for waterfall view
@@ -66,12 +65,11 @@ function traceDetailApp() {
         },
 
         async init() {
-            // Extract trace_id from URL path: /traces/{trace_id}
             const pathParts = window.location.pathname.split('/');
-            this.traceId = pathParts[pathParts.length - 1];
+            this.sessionId = pathParts[pathParts.length - 1];
 
-            if (!this.traceId) {
-                console.error('No trace ID in URL');
+            if (!this.sessionId) {
+                console.error('No session ID in URL');
                 return;
             }
 
@@ -122,7 +120,7 @@ function traceDetailApp() {
 
         async loadTraceData() {
             try {
-                const response = await fetch(`/api/trace/${this.traceId}`);
+                const response = await fetch(`/api/sessions/${this.sessionId}/trace`);
                 const data = await response.json();
 
                 this.spans = data.spans.map(span => this.enrichSpan(span));
@@ -380,7 +378,7 @@ function traceDetailApp() {
                 ]
             });
 
-            this.wavesurfer.load(`/api/audio/${this.traceId}`);
+            this.wavesurfer.load(`/api/sessions/${this.sessionId}/audio`);
 
             // Event listeners
             this.wavesurfer.on('play', () => { this.playing = true; });
@@ -1079,11 +1077,9 @@ function traceDetailApp() {
         },
 
         async reloadAudioIfNotPlaying() {
-            // Only reload audio if it's not currently playing
             if (this.wavesurfer && !this.wavesurfer.isPlaying()) {
                 console.log('Reloading audio waveform (synchronized with spans)');
-                // Add cache-busting parameter to force reload
-                const audioUrl = `/api/audio/${this.traceId}?t=${Date.now()}`;
+                const audioUrl = `/api/sessions/${this.sessionId}/audio?t=${Date.now()}`;
                 this.wavesurfer.load(audioUrl);
             } else if (this.wavesurfer) {
                 console.log('Audio is playing, skipping reload');
@@ -1118,7 +1114,7 @@ function traceDetailApp() {
 
         async pollForSpans() {
             try {
-                const response = await fetch(`/api/trace/${this.traceId}`);
+                const response = await fetch(`/api/sessions/${this.sessionId}/trace`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();

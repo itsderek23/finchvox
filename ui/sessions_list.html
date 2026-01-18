@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traces - Finchvox</title>
+    <title>Sessions - Finchvox</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,30 +23,30 @@
     <script src="/js/time-utils.js"></script>
     <script defer src="/lib/alpine.min.js"></script>
 </head>
-<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="tracesListApp()" x-init="init()">
+<body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="sessionsListApp()" x-init="init()">
     <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
         <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto">
-        <span class="text-white/70">Traces</span> <span>/</span> <span x-text="`${traces.length} traces`"></span>
+        <span class="text-white/70">Sessions</span> <span>/</span> <span x-text="`${sessions.length} sessions`"></span>
     </div>
     <main class="flex-1 overflow-auto px-8 pb-16">
-        <div x-show="traces.length === 0" class="flex items-center gap-3 p-4 px-5 mt-24 mx-0 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
+        <div x-show="sessions.length === 0" class="flex items-center gap-3 p-4 px-5 mt-24 mx-0 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
             <span>
-                Is this thing on? No traces have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
+                Is this thing on? No sessions have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
                 <div x-show="dataDir && dataDir.length > 0" class="block mt-2 text-white/70">
                     Data directory: <span class="font-mono text-xs" x-text="dataDir"></span>
                 </div>
             </span>
         </div>
 
-        <div class="bg-white/[0.02] rounded-lg border border-white/10 overflow-hidden mt-4" x-show="traces.length > 0">
+        <div class="bg-white/[0.02] rounded-lg border border-white/10 overflow-hidden mt-4" x-show="sessions.length > 0">
         <table class="w-full border-collapse">
             <thead>
                 <tr class="border-b border-white/10 text-white/50 text-left">
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Service Name</th>
-                    <th class="py-4 px-6 text-xs font-medium tracking-wide">Trace ID</th>
+                    <th class="py-4 px-6 text-xs font-medium tracking-wide">Session ID</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Start Time</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Duration</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Audio</th>
@@ -56,17 +56,17 @@
                 </tr>
             </thead>
             <tbody>
-                <template x-for="trace in traces" :key="trace.trace_id">
+                <template x-for="session in sessions" :key="session.session_id">
                     <tr class="border-b border-white/5 transition-colors even:bg-[#0f0f0f] hover:bg-amber-500/[0.08]">
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.service_name || '-'"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="session.service_name || '-'"></td>
                         <td class="py-4 px-6 text-white/70 font-mono text-[13px]">
-                            <a class="text-amber-400 underline hover:text-amber-300 transition-colors" :href="`/traces/${trace.trace_id}`" x-text="trace.trace_id"></a>
+                            <a class="text-amber-400 underline hover:text-amber-300 transition-colors" :href="`/sessions/${session.session_id}`" x-text="session.session_id"></a>
                         </td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(trace.start_time)"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(trace.duration_ms)"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="trace.audio_size_mb !== null ? trace.audio_size_mb + ' MB' : '—'"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.span_count)"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(trace.log_count)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(session.start_time)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(session.duration_ms)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="session.audio_size_mb !== null ? session.audio_size_mb + ' MB' : '—'"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(session.trace.span_count)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(session.log_count)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm">
 
                         </td>
@@ -77,6 +77,6 @@
         </div>
     </main>
 
-    <script src="/js/traces_list.js"></script>
+    <script src="/js/sessions_list.js"></script>
 </body>
 </html>

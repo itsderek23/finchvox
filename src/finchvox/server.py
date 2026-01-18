@@ -31,7 +31,7 @@ from finchvox.collector.config import (
     GRPC_PORT,
     MAX_WORKERS,
     get_default_data_dir,
-    get_traces_base_dir
+    get_sessions_base_dir
 )
 
 
@@ -122,7 +122,7 @@ class UnifiedServer:
         # Start serving
         self.grpc_server.start()
         logger.info(f"OTLP collector listening on port {self.grpc_port}")
-        logger.info(f"Writing traces to: {get_traces_base_dir(self.data_dir).absolute()}")
+        logger.info(f"Writing sessions to: {get_sessions_base_dir(self.data_dir).absolute()}")
 
     async def start_http(self):
         """Start the HTTP server using uvicorn."""
