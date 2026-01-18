@@ -91,16 +91,8 @@ rm -rf test-env
 
 ## Upload to PyPI
 
-### 1. Install Twine (if needed)
-
 ```bash
-pip install twine
-```
-
-### 2. Upload
-
-```bash
-twine upload dist/*
+ uv publish dist/*
 ```
 
 Enter your PyPI API token when prompted.
