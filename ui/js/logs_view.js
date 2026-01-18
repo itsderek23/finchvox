@@ -1,7 +1,7 @@
 function logsViewMixin() {
     return {
         logCopied: false,
-        selectedView: 'trace',
+        selectedView: 'logs',
         logs: [],
         selectedLog: null,
         highlightedLogIndex: -1,
@@ -20,8 +20,8 @@ function logsViewMixin() {
 
         initLogsView() {
             const hash = window.location.hash.slice(1);
-            if (hash === 'logs') {
-                this.selectedView = 'logs';
+            if (hash === 'trace') {
+                this.selectedView = 'trace';
             }
         },
 

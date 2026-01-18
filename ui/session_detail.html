@@ -144,15 +144,15 @@
 
                 <!-- View Tabs -->
                 <div class="flex gap-6 px-8 py-2 bg-[#050507]">
-                    <button @click="switchView('trace')"
-                            class="pb-1 text-sm font-medium transition-colors border-b-2"
-                            :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
-                        Trace
-                    </button>
                     <button @click="switchView('logs')"
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'logs' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
                         Logs
+                    </button>
+                    <button @click="switchView('trace')"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Trace
                     </button>
                 </div>
             </div><!-- End fixed-container -->
