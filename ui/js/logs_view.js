@@ -71,7 +71,7 @@ function logsViewMixin() {
             this.logsLoading = true;
 
             try {
-                const response = await fetch(`/api/logs/${this.traceId}?limit=${this.logsLimit}`);
+                const response = await fetch(`/api/sessions/${this.sessionId}/logs?limit=${this.logsLimit}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();

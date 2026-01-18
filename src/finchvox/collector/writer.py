@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from loguru import logger
 from google.protobuf.json_format import MessageToDict
-from finchvox.collector.config import get_trace_dir
+from finchvox.collector.config import get_session_dir
 
 
 class SpanWriter:
@@ -23,28 +23,22 @@ class SpanWriter:
             # Extract trace_id as hex string
             trace_id_hex = span.trace_id.hex()
 
-            # Get trace-specific directory
-            trace_dir = get_trace_dir(self.data_dir, trace_id_hex)
-            trace_dir.mkdir(parents=True, exist_ok=True)
+            session_dir = get_session_dir(self.data_dir, trace_id_hex)
+            session_dir.mkdir(parents=True, exist_ok=True)
 
-            # Convert protobuf to dict for JSON serialization
             span_dict = self._convert_span_to_dict(span, resource_spans, scope_spans)
 
-            # Write to trace file inside trace directory
-            trace_file = trace_dir / f"trace_{trace_id_hex}.jsonl"
+            trace_file = session_dir / f"trace_{trace_id_hex}.jsonl"
 
-            # Check if this is a new trace or existing trace
-            is_new_trace = not trace_file.exists()
+            is_new_session = not trace_file.exists()
 
-            if is_new_trace:
-                # Log span type for new traces
+            if is_new_session:
                 span_name = span.name if span.name else "UNKNOWN"
-                logger.info(f"New trace {trace_id_hex} - first span type: {span_name}")
+                logger.info(f"New session {trace_id_hex} - first span type: {span_name}")
             else:
-                # Count existing spans in the trace
                 with trace_file.open('r') as f:
                     span_count = sum(1 for _ in f)
-                logger.info(f"Trace {trace_id_hex[:8]}... - adding span #{span_count + 1}")
+                logger.info(f"Session {trace_id_hex[:8]}... - adding span #{span_count + 1}")
 
             with trace_file.open('a') as f:
                 json.dump(span_dict, f)
