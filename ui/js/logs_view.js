@@ -20,8 +20,8 @@ function logsViewMixin() {
 
         initLogsView() {
             const hash = window.location.hash.slice(1);
-            if (hash === 'trace') {
-                this.selectedView = 'trace';
+            if (hash === 'trace' || hash === 'conversation') {
+                this.selectedView = hash;
             }
         },
 
@@ -64,6 +64,10 @@ function logsViewMixin() {
 
             if (view === 'logs' && this.logs.length === 0) {
                 this.loadLogs();
+            }
+
+            if (view === 'conversation' && this.conversationMessages.length === 0) {
+                this.fetchConversation();
             }
         },
 

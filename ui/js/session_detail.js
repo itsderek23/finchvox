@@ -47,6 +47,9 @@ function sessionDetailApp() {
         // Logs view mixin (state and methods from logs_view.js)
         ...logsViewMixin(),
 
+        // Conversation view mixin (state and methods from conversation.js)
+        ...conversationViewMixin(),
+
         // Timeline state
         minTime: 0,
         maxTime: 0,
@@ -76,6 +79,7 @@ function sessionDetailApp() {
             this.initLogsView();
             await this.loadTraceData();
             this.loadLogsIfNeeded();
+            this.loadConversationIfNeeded();
 
             // Disabled: Real-time polling not currently supported for logs
             // const conversationSpan = this.spans.find(s => s.name === 'conversation');
