@@ -5,6 +5,11 @@ All notable changes to **Finchvox** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+* Show conversation STT / TTS messages prior to turn completion.
+* By default, include modules from the project directory in log capture.
+
 ## [0.0.5] - 2026-1-19
 
 * Add conversation section to session detail view to see a transcript of user <-> agent interactions.
