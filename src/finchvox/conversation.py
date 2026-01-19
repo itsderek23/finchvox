@@ -66,6 +66,12 @@ class Conversation:
     def _get_span_role(self, span: dict) -> str:
         return "user" if span.get("name") == "stt" else "assistant"
 
+    def _span_was_interrupted(self, span: dict) -> bool:
+        turn = self._get_parent_turn(span)
+        if not turn:
+            return False
+        return bool(self._get_attribute(turn, "turn.was_interrupted"))
+
     def _create_message(
         self,
         role: str,
@@ -126,17 +132,48 @@ class Conversation:
         if self._messages is not None:
             return self._messages
 
-        turn_spans = self._get_turn_spans()
-        turns = [s for s in self.spans if s.get("name") == "turn"]
-        turns_sorted = sorted(turns, key=lambda t: t.get("start_time_unix_nano", 0))
+        stt_tts_spans = [s for s in self.spans if s.get("name") in ("stt", "tts")]
+        spans_sorted = sorted(stt_tts_spans, key=lambda s: s.get("start_time_unix_nano", 0))
 
         all_messages: list[Message] = []
-        for turn in turns_sorted:
-            turn_id = turn.get("span_id_hex")
-            spans = turn_spans.get(turn_id, [])
-            if spans:
-                messages = self._build_messages_for_turn(turn, spans)
-                all_messages.extend(messages)
+        acc_role: str | None = None
+        acc_texts: list[str] = []
+        acc_span_ids: list[str] = []
+        acc_timestamp: int = 0
+        acc_first_span: dict | None = None
+
+        for span in spans_sorted:
+            text = self._get_span_text(span)
+            if not text:
+                continue
+
+            role = self._get_span_role(span)
+            if role == acc_role:
+                acc_texts.append(text)
+                acc_span_ids.append(span.get("span_id_hex"))
+                continue
+
+            if acc_texts and acc_role and acc_first_span:
+                was_interrupted = self._span_was_interrupted(acc_first_span)
+                all_messages.append(
+                    self._create_message(
+                        acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted
+                    )
+                )
+
+            acc_role = role
+            acc_texts = [text]
+            acc_span_ids = [span.get("span_id_hex")]
+            acc_timestamp = span.get("start_time_unix_nano", 0)
+            acc_first_span = span
+
+        if acc_texts and acc_role and acc_first_span:
+            was_interrupted = self._span_was_interrupted(acc_first_span)
+            all_messages.append(
+                self._create_message(
+                    acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted
+                )
+            )
 
         self._messages = all_messages
         return self._messages
