@@ -305,7 +305,7 @@
                         <div class="shrink-0 w-20">
                             <span class="text-xs font-semibold uppercase tracking-wide"
                                   :class="message.role === 'user' ? 'text-[#f97316]' : 'text-[#a855f7]'"
-                                  x-text="message.role"></span>
+                                  x-text="message.role === 'user' ? 'User' : 'Agent'"></span>
                         </div>
                         <!-- Message content -->
                         <div class="flex-1 min-w-0">
