@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from finchvox.audio_utils import find_chunks, combine_chunks
+from finchvox.conversation import Conversation
 from finchvox.session import Session
 from finchvox.collector.config import (
     get_sessions_base_dir,
@@ -170,6 +171,12 @@ async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) 
     })
 
 
+async def _handle_get_session_conversation(data_dir: Path, session_id: str) -> JSONResponse:
+    spans = _get_session_spans(data_dir, session_id)
+    conversation = Conversation(spans)
+    return JSONResponse({"messages": conversation.to_dict_list()})
+
+
 async def _handle_get_session_audio(
     data_dir: Path,
     session_id: str,
@@ -239,6 +246,10 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     @app.get("/api/sessions/{session_id}/logs")
     async def get_session_logs(session_id: str, limit: int = 1000) -> JSONResponse:
         return await _handle_get_session_logs(data_dir, session_id, limit)
+
+    @app.get("/api/sessions/{session_id}/conversation")
+    async def get_session_conversation(session_id: str) -> JSONResponse:
+        return await _handle_get_session_conversation(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/exceptions")
     async def get_session_exceptions(session_id: str) -> JSONResponse:
