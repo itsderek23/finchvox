@@ -1,8 +1,11 @@
 import logging
+from importlib.metadata import version
+from pathlib import Path
 from loguru import logger
 
 _initialized = False
 _allowed_log_modules: set[str] = {"pipecat.", "finchvox.", "__main__"}
+_app_root: Path | None = None
 
 
 def init(
@@ -11,12 +14,18 @@ def init(
     insecure: bool = True,
     capture_logs: bool = True,
     log_modules: list[str] | None = None,
+    app_root: str | Path | None = None,
 ) -> None:
-    global _initialized, _allowed_log_modules
+    global _initialized, _allowed_log_modules, _app_root
 
     if _initialized:
         logger.warning("finchvox.init() already called, skipping")
         return
+
+    if app_root is not None:
+        _app_root = Path(app_root).resolve()
+    else:
+        _app_root = Path.cwd()
 
     if log_modules:
         for mod in log_modules:
@@ -32,7 +41,34 @@ def init(
         _setup_log_capture(service_name, endpoint, insecure)
 
     _initialized = True
-    logger.info(f"finchvox initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}")
+    logger.info(f"Finchvox v{version('finchvox')} initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}")
+
+
+def _is_allowed_source(module: str, pathname: str | None) -> bool:
+    """Check if a log source should be captured.
+
+    A source is allowed if:
+    1. The module name matches an allowed prefix (pipecat., finchvox., __main__), OR
+    2. The file path is within the app_root directory (excluding site-packages, .venv)
+    """
+    for prefix in _allowed_log_modules:
+        if prefix == "__main__":
+            if module == "__main__":
+                return True
+        elif module.startswith(prefix):
+            return True
+
+    if pathname and _app_root:
+        try:
+            path = Path(pathname).resolve()
+            if path.is_relative_to(_app_root):
+                path_str = str(path)
+                if "site-packages" not in path_str and "/.venv/" not in path_str:
+                    return True
+        except (ValueError, OSError):
+            pass
+
+    return False
 
 
 class TraceContextLoggingHandler(logging.Handler):
@@ -56,7 +92,8 @@ class TraceContextLoggingHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         module = record.name or ""
-        if not self._is_allowed_module(module):
+        pathname = getattr(record, "pathname", None)
+        if not _is_allowed_source(module, pathname):
             return
 
         ctx = _get_pipecat_context()
@@ -67,15 +104,6 @@ class TraceContextLoggingHandler(logging.Handler):
                 self._otel_handler.emit(record)
             finally:
                 detach(token)
-
-    def _is_allowed_module(self, module: str) -> bool:
-        for prefix in _allowed_log_modules:
-            if prefix == "__main__":
-                if module == "__main__":
-                    return True
-            elif module.startswith(prefix):
-                return True
-        return False
 
 
 def _setup_log_capture(service_name: str, endpoint: str, insecure: bool) -> None:
@@ -141,6 +169,21 @@ def _setup_loguru_bridge() -> None:
         level_name = record["level"].name
         stdlib_level = getattr(logging, level_name.upper(), logging.INFO)
         module_name = record["name"] or "loguru"
+        pathname = record["file"].path if record.get("file") else None
+        lineno = record.get("line", 0)
+        func_name = record.get("function", "")
+
+        stdlib_logger = logging.getLogger(module_name)
+        log_record = stdlib_logger.makeRecord(
+            name=module_name,
+            level=stdlib_level,
+            fn=pathname or "",
+            lno=lineno,
+            msg=record["message"],
+            args=(),
+            exc_info=None,
+            func=func_name,
+        )
 
         turn_context = _get_pipecat_context()
 
@@ -148,11 +191,11 @@ def _setup_loguru_bridge() -> None:
             from opentelemetry.context import attach, detach
             token = attach(turn_context)
             try:
-                logging.getLogger(module_name).log(stdlib_level, record["message"])
+                stdlib_logger.handle(log_record)
             finally:
                 detach(token)
         else:
-            logging.getLogger(module_name).log(stdlib_level, record["message"])
+            stdlib_logger.handle(log_record)
 
     loguru_logger.configure(patcher=log_patcher)
 
