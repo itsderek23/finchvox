@@ -113,10 +113,27 @@ async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResp
     return JSONResponse({"spans": spans, "last_span_time": last_span_time})
 
 
-async def _handle_get_session_trace_raw(data_dir: Path, session_id: str) -> JSONResponse:
+def _get_session_logs_raw(data_dir: Path, session_id: str) -> list[dict]:
+    session_dir = get_session_dir(data_dir, session_id)
+    log_file = session_dir / f"logs_{session_id}.jsonl"
+    if not log_file.exists():
+        return []
+    logs = []
+    with open(log_file, 'r') as f:
+        for line in f:
+            if line.strip():
+                try:
+                    logs.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    return logs
+
+
+async def _handle_get_session_raw(data_dir: Path, session_id: str) -> JSONResponse:
     spans = _get_session_spans(data_dir, session_id)
+    logs = _get_session_logs_raw(data_dir, session_id)
     return JSONResponse(
-        content=spans,
+        content={"Traces": spans, "Logs": logs},
         media_type="application/json",
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
@@ -239,9 +256,9 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     async def get_session_trace(session_id: str) -> JSONResponse:
         return await _handle_get_session_trace(data_dir, session_id)
 
-    @app.get("/api/sessions/{session_id}/trace/raw")
-    async def get_session_trace_raw(session_id: str) -> JSONResponse:
-        return await _handle_get_session_trace_raw(data_dir, session_id)
+    @app.get("/api/sessions/{session_id}/raw")
+    async def get_session_raw(session_id: str) -> JSONResponse:
+        return await _handle_get_session_raw(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/logs")
     async def get_session_logs(session_id: str, limit: int = 1000) -> JSONResponse:
