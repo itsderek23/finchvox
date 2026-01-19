@@ -74,7 +74,7 @@ The `finchvox.init()` function accepts the following optional parameters:
 | `capture_logs` | `True` | Send logs to collector alongside traces |
 | `log_modules` | `None` | Additional module prefixes to capture (e.g., `["myapp"]`) |
 
-By default, logs from `pipecat.*`, `finchvox.*`, and `__main__` are captured. Use `log_modules` to include logs from your own modules.
+By default, logs from `pipecat.*`, `finchvox.*`, `__main__`, and any source files in your project directory are captured. Use `log_modules` to include additional third-party modules.
 
 ## Usage - Finchvox server
 
