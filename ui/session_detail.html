@@ -297,7 +297,7 @@
             <!-- Messages -->
             <div class="flex-1 overflow-y-auto px-8 py-4 space-y-4" x-show="!conversationLoading && !conversationError && conversationMessages.length > 0">
                 <template x-for="(message, index) in conversationMessages" :key="index">
-                    <div class="flex gap-4 p-3 rounded-lg cursor-pointer transition-colors hover:bg-white/5"
+                    <div class="flex gap-4 py-3 rounded-lg cursor-pointer transition-colors hover:bg-white/5"
                          @click="seekToMessage(message)"
                          @mouseenter="seekToMessage(message)"
                          @mouseleave="hideConversationMarker()">
