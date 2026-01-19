@@ -55,6 +55,16 @@ class Conversation:
             turn_spans[turn_id].append(span)
         return turn_spans
 
+    def _get_orphan_spans(self) -> list[dict]:
+        orphans = []
+        for span in self.spans:
+            name = span.get("name")
+            if name not in ("stt", "tts"):
+                continue
+            if self._get_parent_turn(span) is None:
+                orphans.append(span)
+        return orphans
+
     def _get_span_text(self, span: dict) -> str:
         name = span.get("name")
         if name == "stt":
@@ -128,6 +138,43 @@ class Conversation:
 
         return messages
 
+    def _build_messages_for_orphans(self, spans: list[dict]) -> list[Message]:
+        spans_sorted = sorted(spans, key=lambda s: s.get("start_time_unix_nano", 0))
+
+        messages: list[Message] = []
+        acc_role: str | None = None
+        acc_texts: list[str] = []
+        acc_span_ids: list[str] = []
+        acc_timestamp: int = 0
+
+        for span in spans_sorted:
+            text = self._get_span_text(span)
+            if not text:
+                continue
+
+            role = self._get_span_role(span)
+            if role == acc_role:
+                acc_texts.append(text)
+                acc_span_ids.append(span.get("span_id_hex"))
+                continue
+
+            if acc_texts:
+                messages.append(
+                    self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, False)
+                )
+
+            acc_role = role
+            acc_texts = [text]
+            acc_span_ids = [span.get("span_id_hex")]
+            acc_timestamp = span.get("start_time_unix_nano", 0)
+
+        if acc_texts:
+            messages.append(
+                self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, False)
+            )
+
+        return messages
+
     def get_messages(self) -> list[Message]:
         if self._messages is not None:
             return self._messages
@@ -174,6 +221,11 @@ class Conversation:
                     acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted
                 )
             )
+
+        orphan_spans = self._get_orphan_spans()
+        if orphan_spans:
+            orphan_messages = self._build_messages_for_orphans(orphan_spans)
+            all_messages.extend(orphan_messages)
 
         self._messages = all_messages
         return self._messages
