@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import time
 import wave
 from datetime import datetime
 from typing import Optional
@@ -27,6 +28,9 @@ from pipecat.utils.tracing.conversation_context_provider import (
 )
 
 
+MAX_SILENCE_SECONDS = 60.0
+
+
 def _is_finchvox_initialized() -> bool:
     import finchvox
     return finchvox._initialized
@@ -51,6 +55,7 @@ class FinchvoxProcessor(FrameProcessor):
         self._conversation_start_time: Optional[datetime] = None
         self._chunk_counter = 0
         self._setup_info: Optional[FrameProcessorSetup] = None
+        self._input_frame_count = 0
 
     async def setup(self, setup: FrameProcessorSetup):
         await super().setup(setup)
@@ -65,8 +70,31 @@ class FinchvoxProcessor(FrameProcessor):
             await self._handle_end_frame(frame)
 
         if self._audio_buffer and not self._disabled:
+            if isinstance(frame, (InputAudioRawFrame, OutputAudioRawFrame)):
+                now = time.time()
+                min_timestamp = now - MAX_SILENCE_SECONDS
+                if self._audio_buffer._last_user_frame_at < min_timestamp:
+                    trimmed = now - self._audio_buffer._last_user_frame_at
+                    self._audio_buffer._last_user_frame_at = min_timestamp
+                    logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
+                if self._audio_buffer._last_bot_frame_at < min_timestamp:
+                    trimmed = now - self._audio_buffer._last_bot_frame_at
+                    self._audio_buffer._last_bot_frame_at = min_timestamp
+                    logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
+
             if isinstance(frame, (StartFrame, InputAudioRawFrame, OutputAudioRawFrame, EndFrame, CancelFrame)):
                 await self._audio_buffer.process_frame(frame, direction)
+
+            if isinstance(frame, InputAudioRawFrame):
+                self._input_frame_count += 1
+                if self._input_frame_count % 100 == 0:
+                    user_mb = len(self._audio_buffer._user_audio_buffer) / 1024 / 1024
+                    bot_mb = len(self._audio_buffer._bot_audio_buffer) / 1024 / 1024
+                    logger.debug(
+                        f"Audio frame #{self._input_frame_count}: "
+                        f"user_buffer={user_mb:.2f}MB, "
+                        f"bot_buffer={bot_mb:.2f}MB"
+                    )
 
         await self.push_frame(frame, direction)
 
@@ -100,6 +128,7 @@ class FinchvoxProcessor(FrameProcessor):
         self._conversation_start_time = datetime.now()
         self._chunk_counter = 0
         self._timing_events = []
+        self._input_frame_count = 0
 
         await self._audio_buffer.start_recording()
         logger.info("FinchvoxProcessor: Started audio recording")
@@ -185,6 +214,9 @@ class FinchvoxProcessor(FrameProcessor):
                 wav_file.setsampwidth(2)
                 wav_file.setframerate(metadata["sample_rate"])
                 wav_file.writeframes(audio_data)
+
+            wav_mb = wav_buffer.tell() / 1024 / 1024
+            logger.debug(f"Uploading chunk {chunk_number}: {wav_mb:.2f}MB")
 
             wav_buffer.seek(0)
 
