@@ -70,33 +70,39 @@ class FinchvoxProcessor(FrameProcessor):
             await self._handle_end_frame(frame)
 
         if self._audio_buffer and not self._disabled:
-            if isinstance(frame, (InputAudioRawFrame, OutputAudioRawFrame)):
-                now = time.time()
-                min_timestamp = now - MAX_SILENCE_SECONDS
-                if self._audio_buffer._last_user_frame_at < min_timestamp:
-                    trimmed = now - self._audio_buffer._last_user_frame_at
-                    self._audio_buffer._last_user_frame_at = min_timestamp
-                    logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
-                if self._audio_buffer._last_bot_frame_at < min_timestamp:
-                    trimmed = now - self._audio_buffer._last_bot_frame_at
-                    self._audio_buffer._last_bot_frame_at = min_timestamp
-                    logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
-
-            if isinstance(frame, (StartFrame, InputAudioRawFrame, OutputAudioRawFrame, EndFrame, CancelFrame)):
-                await self._audio_buffer.process_frame(frame, direction)
-
-            if isinstance(frame, InputAudioRawFrame):
-                self._input_frame_count += 1
-                if self._input_frame_count % 100 == 0:
-                    user_mb = len(self._audio_buffer._user_audio_buffer) / 1024 / 1024
-                    bot_mb = len(self._audio_buffer._bot_audio_buffer) / 1024 / 1024
-                    logger.debug(
-                        f"Audio frame #{self._input_frame_count}: "
-                        f"user_buffer={user_mb:.2f}MB, "
-                        f"bot_buffer={bot_mb:.2f}MB"
-                    )
+            await self._process_audio_frame(frame, direction)
 
         await self.push_frame(frame, direction)
+
+    async def _process_audio_frame(self, frame: Frame, direction: FrameDirection):
+        if isinstance(frame, (InputAudioRawFrame, OutputAudioRawFrame)):
+            self._cap_silence_timestamps()
+
+        if isinstance(frame, (StartFrame, InputAudioRawFrame, OutputAudioRawFrame, EndFrame, CancelFrame)):
+            await self._audio_buffer.process_frame(frame, direction)
+
+        if isinstance(frame, InputAudioRawFrame):
+            self._input_frame_count += 1
+            if self._input_frame_count % 100 == 0:
+                user_mb = len(self._audio_buffer._user_audio_buffer) / 1024 / 1024
+                bot_mb = len(self._audio_buffer._bot_audio_buffer) / 1024 / 1024
+                logger.debug(
+                    f"Audio frame #{self._input_frame_count}: "
+                    f"user_buffer={user_mb:.2f}MB, "
+                    f"bot_buffer={bot_mb:.2f}MB"
+                )
+
+    def _cap_silence_timestamps(self):
+        now = time.time()
+        min_timestamp = now - MAX_SILENCE_SECONDS
+        if self._audio_buffer._last_user_frame_at < min_timestamp:
+            trimmed = now - self._audio_buffer._last_user_frame_at
+            self._audio_buffer._last_user_frame_at = min_timestamp
+            logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
+        if self._audio_buffer._last_bot_frame_at < min_timestamp:
+            trimmed = now - self._audio_buffer._last_bot_frame_at
+            self._audio_buffer._last_bot_frame_at = min_timestamp
+            logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
 
     async def _handle_start_frame(self, frame: StartFrame):
         if not _is_finchvox_initialized():
