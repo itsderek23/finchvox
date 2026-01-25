@@ -53,6 +53,8 @@ function metricsViewMixin() {
                     span_id: p.span_id
                 }));
 
+                canvas.addEventListener('mouseleave', () => this.hideMarkerFromMetrics());
+
                 this.metricsCharts[service] = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -80,6 +82,7 @@ function metricsViewMixin() {
                             intersect: false
                         },
                         onClick: (event, elements) => this.handleChartClick(service, elements),
+                        onHover: (event, elements) => this.handleChartHover(service, elements),
                         plugins: {
                             legend: {
                                 display: false
@@ -151,6 +154,30 @@ function metricsViewMixin() {
             const span = this.spans.find(s => s.span_id_hex === dataPoint.span_id);
             if (span) {
                 this.selectSpan(span, true);
+            }
+        },
+
+        handleChartHover(service, elements) {
+            if (!elements || elements.length === 0) {
+                return;
+            }
+
+            const dataIndex = elements[0].index;
+            const dataPoint = this.metricsData.series[service].data_points[dataIndex];
+            if (!dataPoint) return;
+
+            this.showMarkerFromMetrics(dataPoint.relative_time_ms / 1000);
+        },
+
+        showMarkerFromMetrics(timeSeconds) {
+            this.hoverMarker.time = timeSeconds;
+            this.hoverMarker.source = 'metrics';
+            this.hoverMarker.visible = true;
+        },
+
+        hideMarkerFromMetrics() {
+            if (this.hoverMarker.source === 'metrics') {
+                this.hoverMarker.visible = false;
             }
         },
 
