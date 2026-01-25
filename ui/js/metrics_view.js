@@ -227,7 +227,7 @@ function metricsViewMixin() {
 
         formatStatValue(value) {
             if (value === undefined || value === null) return '-';
-            return value.toFixed(1);
+            return Math.round(value);
         }
     };
 }

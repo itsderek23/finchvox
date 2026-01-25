@@ -368,9 +368,9 @@
                                   }"
                                   x-text="service.toUpperCase() + ' - TTFB'"></span>
                             <div class="flex gap-4 text-xs text-white/50">
-                                <span>avg: <span class="text-white/70" x-text="formatStatValue(getMetricsStats(service)?.avg_ms)"></span>ms</span>
-                                <span>p50: <span class="text-white/70" x-text="formatStatValue(getMetricsStats(service)?.p50_ms)"></span>ms</span>
-                                <span>p95: <span class="text-white/70" x-text="formatStatValue(getMetricsStats(service)?.p95_ms)"></span>ms</span>
+                                <span>AVG <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.avg_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p50 <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.p50_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p95 <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.p95_ms)"></span><span class="font-mono">ms</span></span>
                             </div>
                         </div>
                         <!-- Chart canvas -->
