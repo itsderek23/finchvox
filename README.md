@@ -1,7 +1,8 @@
 # <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - elevated debugging for Pipecat Voice AI
-Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps. 
 
-Finchvox unifies conversation audio, logs, and traces in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
+Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps.
+
+Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
 
 _👇 Click the image for a short video:_
 <a href="https://raw.githubusercontent.com/itsderek23/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
@@ -67,12 +68,12 @@ task = PipelineTask(
 
 The `finchvox.init()` function accepts the following optional parameters:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `endpoint` | `"http://localhost:4317"` | Finchvox collector endpoint |
-| `insecure` | `True` | Use insecure gRPC connection (no TLS) |
-| `capture_logs` | `True` | Send logs to collector alongside traces |
-| `log_modules` | `None` | Additional module prefixes to capture (e.g., `["myapp"]`) |
+| Parameter      | Default                   | Description                                               |
+| -------------- | ------------------------- | --------------------------------------------------------- |
+| `endpoint`     | `"http://localhost:4317"` | Finchvox collector endpoint                               |
+| `insecure`     | `True`                    | Use insecure gRPC connection (no TLS)                     |
+| `capture_logs` | `True`                    | Send logs to collector alongside traces                   |
+| `log_modules`  | `None`                    | Additional module prefixes to capture (e.g., `["myapp"]`) |
 
 By default, logs from `pipecat.*`, `finchvox.*`, `__main__`, and any source files in your project directory are captured. Use `log_modules` to include additional third-party modules.
 
