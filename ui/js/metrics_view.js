@@ -25,13 +25,18 @@ function metricsViewMixin() {
             }
         },
 
+        shouldLoadMetrics() {
+            if (this.selectedView !== 'metrics') return false;
+            if (this.metricsData || this.metricsLoading) return false;
+            return true;
+        },
+
         async loadMetricsIfNeeded() {
-            if (this.selectedView === 'metrics' && !this.metricsData && !this.metricsLoading) {
-                await this.fetchMetrics();
-                this.$nextTick(() => {
-                    this.initMetricsCharts();
-                });
-            }
+            if (!this.shouldLoadMetrics()) return;
+            await this.fetchMetrics();
+            this.$nextTick(() => {
+                this.initMetricsCharts();
+            });
         },
 
         initMetricsCharts() {

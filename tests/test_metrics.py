@@ -55,6 +55,10 @@ def make_span(name: str, start_nano: int, ttfb_seconds: float = None, span_id: s
     return span
 
 
+def get_llm_series(spans: list):
+    return Metrics(spans).get_ttfb_series()["llm"]
+
+
 class TestMetricsClass:
 
     def test_extracts_ttfb_from_spans(self):
@@ -62,14 +66,11 @@ class TestMetricsClass:
             make_span("llm", 1000000000000, ttfb_seconds=1.5, span_id="span1"),
             make_span("llm", 2000000000000, ttfb_seconds=2.0, span_id="span2"),
         ]
+        llm_series = get_llm_series(spans)
 
-        metrics = Metrics(spans)
-        series = metrics.get_ttfb_series()
-
-        assert "llm" in series
-        assert len(series["llm"].data_points) == 2
-        assert series["llm"].data_points[0].ttfb_ms == 1500.0
-        assert series["llm"].data_points[1].ttfb_ms == 2000.0
+        assert len(llm_series.data_points) == 2
+        assert llm_series.data_points[0].ttfb_ms == 1500.0
+        assert llm_series.data_points[1].ttfb_ms == 2000.0
 
     def test_groups_by_service(self):
         spans = [
@@ -119,12 +120,10 @@ class TestMetricsClass:
             make_span("llm", 1000000000000, ttfb_seconds=1.0, span_id="span1"),
             make_span("llm", 1500000000000, ttfb_seconds=2.0, span_id="span2"),
         ]
+        llm_series = get_llm_series(spans)
 
-        metrics = Metrics(spans)
-        series = metrics.get_ttfb_series()
-
-        assert series["llm"].data_points[0].relative_time_ms == 0.0
-        assert series["llm"].data_points[1].relative_time_ms == 500000.0
+        assert llm_series.data_points[0].relative_time_ms == 0.0
+        assert llm_series.data_points[1].relative_time_ms == 500000.0
 
     def test_sorts_data_points_by_timestamp(self):
         spans = [
