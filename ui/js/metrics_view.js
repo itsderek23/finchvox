@@ -1,0 +1,194 @@
+function metricsViewMixin() {
+    return {
+        metricsData: null,
+        metricsLoading: false,
+        metricsError: null,
+        metricsCharts: {},
+
+        async fetchMetrics() {
+            if (this.metricsData) return;
+
+            this.metricsLoading = true;
+            this.metricsError = null;
+
+            try {
+                const response = await fetch(`/api/sessions/${this.sessionId}/metrics`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch metrics: ${response.status}`);
+                }
+                this.metricsData = await response.json();
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+                this.metricsError = error.message;
+            } finally {
+                this.metricsLoading = false;
+            }
+        },
+
+        async loadMetricsIfNeeded() {
+            if (this.selectedView === 'metrics' && !this.metricsData && !this.metricsLoading) {
+                await this.fetchMetrics();
+                this.$nextTick(() => {
+                    this.initMetricsCharts();
+                });
+            }
+        },
+
+        initMetricsCharts() {
+            if (!this.metricsData || !this.metricsData.services) return;
+
+            this.destroyMetricsCharts();
+
+            for (const service of this.metricsData.services) {
+                const canvas = document.getElementById(`ttfb-chart-${service}`);
+                if (!canvas) continue;
+
+                const ctx = canvas.getContext('2d');
+                const seriesData = this.metricsData.series[service];
+                if (!seriesData || !seriesData.data_points.length) continue;
+
+                const dataPoints = seriesData.data_points.map(p => ({
+                    x: p.relative_time_ms / 1000,
+                    y: p.ttfb_ms,
+                    span_id: p.span_id
+                }));
+
+                this.metricsCharts[service] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: `${service.toUpperCase()} TTFB`,
+                            data: dataPoints,
+                            borderColor: this.getServiceColor(service),
+                            backgroundColor: this.getServiceColor(service) + '33',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: this.getServiceColor(service),
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1,
+                            tension: 0.1,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        onClick: (event, elements) => this.handleChartClick(service, elements),
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleColor: '#ffffff',
+                                bodyColor: '#ffffff',
+                                borderColor: this.getServiceColor(service),
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (items) => {
+                                        if (!items.length) return '';
+                                        const time = items[0].parsed.x;
+                                        return `Time: ${this.formatMetricsTime(time)}`;
+                                    },
+                                    label: (context) => {
+                                        return `TTFB: ${context.parsed.y.toFixed(1)}ms`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    font: { size: 10, family: 'monospace' },
+                                    callback: (value) => this.formatMetricsTime(value)
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Time (ms)',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    font: { size: 12 }
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    font: { size: 12, family: 'monospace' }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
+        handleChartClick(service, elements) {
+            if (!elements || elements.length === 0) return;
+
+            const dataIndex = elements[0].index;
+            const dataPoint = this.metricsData.series[service].data_points[dataIndex];
+            if (!dataPoint) return;
+
+            const span = this.spans.find(s => s.span_id_hex === dataPoint.span_id);
+            if (span) {
+                this.selectSpan(span, true);
+            }
+        },
+
+        getServiceColor(service) {
+            const colors = {
+                stt: '#f97316',
+                llm: '#ec4899',
+                tts: '#a855f7'
+            };
+            return colors[service] || '#6b7280';
+        },
+
+        formatMetricsTime(seconds) {
+            if (seconds < 60) {
+                return `${seconds.toFixed(1)}s`;
+            }
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}m${secs.toFixed(0)}s`;
+        },
+
+        destroyMetricsCharts() {
+            Object.values(this.metricsCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            this.metricsCharts = {};
+        },
+
+        getMetricsStats(service) {
+            if (!this.metricsData || !this.metricsData.series[service]) {
+                return null;
+            }
+            return this.metricsData.series[service].stats;
+        },
+
+        formatStatValue(value) {
+            if (value === undefined || value === null) return '-';
+            return value.toFixed(1);
+        }
+    };
+}
