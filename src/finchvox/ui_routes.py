@@ -9,6 +9,7 @@ from loguru import logger
 
 from finchvox.audio_utils import find_chunks, combine_chunks
 from finchvox.conversation import Conversation
+from finchvox.metrics import Metrics
 from finchvox.session import Session
 from finchvox.collector.config import (
     get_sessions_base_dir,
@@ -284,3 +285,9 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     @app.get("/api/sessions/{session_id}/audio/status")
     async def get_session_audio_status(session_id: str) -> JSONResponse:
         return await _handle_get_session_audio_status(data_dir, session_id)
+
+    @app.get("/api/sessions/{session_id}/metrics")
+    async def get_session_metrics(session_id: str) -> JSONResponse:
+        spans = _get_session_spans(data_dir, session_id)
+        metrics = Metrics(spans)
+        return JSONResponse(metrics.to_dict())

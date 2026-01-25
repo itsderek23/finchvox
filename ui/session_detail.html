@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="/css/app.css">
     <script defer src="/lib/alpine.min.js"></script>
     <script src="/lib/wavesurfer.min.js"></script>
+    <script src="/lib/chart.min.js"></script>
 </head>
 <body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="sessionDetailApp()" x-init="init()">
 
@@ -158,6 +159,11 @@
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'trace' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
                         Trace
+                    </button>
+                    <button @click="switchView('metrics'); loadMetricsIfNeeded()"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'metrics' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Metrics
                     </button>
                 </div>
             </div><!-- End fixed-container -->
@@ -329,6 +335,54 @@
         </div>
     </main>
 
+    <!-- Metrics View -->
+    <main x-show="selectedView === 'metrics'" class="flex-1 mt-[322px]">
+        <div class="overflow-y-auto flex flex-col h-[calc(100vh-332px)] px-8 py-4">
+            <!-- Loading state -->
+            <div x-show="metricsLoading" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">Loading metrics...</span>
+            </div>
+
+            <!-- Error state -->
+            <div x-show="!metricsLoading && metricsError" class="flex-1 flex items-center justify-center">
+                <span class="text-red-400" x-text="metricsError"></span>
+            </div>
+
+            <!-- Empty state -->
+            <div x-show="!metricsLoading && !metricsError && (!metricsData || !metricsData.services || metricsData.services.length === 0)" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">No TTFB metrics available for this session</span>
+            </div>
+
+            <!-- Charts Grid -->
+            <div x-show="!metricsLoading && !metricsError && metricsData && metricsData.services && metricsData.services.length > 0"
+                 class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <template x-for="service in metricsData?.services || []" :key="service">
+                    <div class="bg-white/[0.02] rounded-lg border border-white/10 p-4">
+                        <!-- Header with service name and stats -->
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm font-mono uppercase"
+                                  :class="{
+                                      'text-span-stt': service === 'stt',
+                                      'text-span-llm': service === 'llm',
+                                      'text-span-tts': service === 'tts'
+                                  }"
+                                  x-text="service.toUpperCase() + ' - TTFB'"></span>
+                            <div class="flex gap-4 text-xs text-white/50">
+                                <span>AVG <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.avg_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p50 <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.p50_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p95 <span class="text-white/70 font-mono" x-text="formatStatValue(getMetricsStats(service)?.p95_ms)"></span><span class="font-mono">ms</span></span>
+                            </div>
+                        </div>
+                        <!-- Chart canvas -->
+                        <div style="height: 200px;">
+                            <canvas :id="`ttfb-chart-${service}`"></canvas>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
         </div><!-- End main-content -->
 
         <!-- Side Panel (span details) -->
@@ -488,6 +542,7 @@
     <script src="/js/time-utils.js"></script>
     <script src="/js/logs_view.js"></script>
     <script src="/js/conversation.js"></script>
+    <script src="/js/metrics_view.js"></script>
     <script src="/js/session_detail.js"></script>
 </body>
 </html>
