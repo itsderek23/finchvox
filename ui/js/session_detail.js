@@ -23,6 +23,7 @@ function sessionDetailApp() {
     return {
         sessionId: null,
         serviceName: null,      // Service name from first span with resource.attributes
+        platform: null,         // Platform type: 'pipecat' or 'livekit'
         spans: [],              // Original spans from API
         waterfallSpans: [],     // Flat array in display order for waterfall view
         expandedSpanIds: new Set(), // Set of span IDs that are expanded
@@ -132,6 +133,7 @@ function sessionDetailApp() {
                 const data = await response.json();
 
                 this.spans = data.spans.map(span => this.enrichSpan(span));
+                this.platform = data.platform || 'pipecat';
                 this.extractServiceName();
                 this.updateTimelineBounds();
                 this.buildWaterfallTree();
@@ -188,7 +190,7 @@ function sessionDetailApp() {
 
             let addedExpansions = false;
             this.spans
-                .filter(span => span.name === 'conversation')
+                .filter(span => span._normalized?.category === 'root')
                 .forEach(span => {
                     const children = childrenMap[span.span_id_hex] || [];
                     if (children.length > 0 && !this.expandedSpanIds.has(span.span_id_hex)) {
@@ -247,13 +249,10 @@ function sessionDetailApp() {
         },
 
         collapseAll() {
-            // Collapse everything below turns (depth 2+)
-            // Only expand conversation to show turns, but don't expand turns
             this.expandedSpanIds.clear();
 
-            // Find all conversation spans and expand them (this shows turns but not their children)
             this.spans.forEach(span => {
-                if (span.name === 'conversation') {
+                if (span._normalized?.category === 'root') {
                     const children = this.spans.filter(s => s.parent_span_id_hex === span.span_id_hex);
                     if (children.length > 0) {
                         this.expandedSpanIds.add(span.span_id_hex);
@@ -267,21 +266,32 @@ function sessionDetailApp() {
 
 
         getSpanTypes() {
-            const typeOrder = ['conversation', 'turn', 'stt', 'llm', 'tts'];
-            const presentTypes = new Set(this.spans.map(s => s.name));
+            const categoryOrder = ['root', 'turn', 'stt', 'llm', 'tts', 'other'];
+            const typesByCategory = {};
 
-            const orderedTypes = typeOrder.filter(type => presentTypes.has(type));
+            this.spans.forEach(span => {
+                const category = span._normalized?.category || 'other';
+                const displayName = span._normalized?.display_name || span.name.toUpperCase();
+                if (!typesByCategory[category]) {
+                    typesByCategory[category] = new Set();
+                }
+                typesByCategory[category].add(displayName);
+            });
 
-            const otherTypes = [...presentTypes]
-                .filter(type => !typeOrder.includes(type))
-                .sort();
+            const result = [];
+            categoryOrder.forEach(category => {
+                if (typesByCategory[category]) {
+                    const sortedTypes = [...typesByCategory[category]].sort();
+                    result.push(...sortedTypes);
+                }
+            });
 
-            return [...orderedTypes, ...otherTypes];
+            return result;
         },
 
         getSpansByType(type) {
             return this.spans
-                .filter(s => s.name === type)
+                .filter(s => (s._normalized?.display_name || s.name.toUpperCase()) === type)
                 .sort((a, b) => a.startMs - b.startMs);
         },
 
@@ -329,8 +339,9 @@ function sessionDetailApp() {
 
         getTimelineBarClasses(span) {
             const style = this.getTimelineBarStyle(span);
+            const cssClass = span._normalized?.css_class || `bar-${span.name}`;
             return {
-                [`bar-${span.name}`]: true,
+                [cssClass]: true,
                 'short-bar': style.isShort
             };
         },
@@ -723,20 +734,24 @@ function sessionDetailApp() {
         },
 
         getTranscriptText(span) {
-            if (!span || !span.attributes) return '';
-
+            if (!span) return '';
+            if (span._normalized?.transcript) {
+                return span._normalized.transcript;
+            }
+            if (!span.attributes) return '';
             const transcriptAttr = span.attributes.find(attr => attr.key === 'transcript');
             if (!transcriptAttr) return '';
-
             return transcriptAttr.value.string_value || '';
         },
 
         getOutputText(span) {
-            if (!span || !span.attributes) return '';
-
+            if (!span) return '';
+            if (span._normalized?.output_text) {
+                return span._normalized.output_text;
+            }
+            if (!span.attributes) return '';
             const outputAttr = span.attributes.find(attr => attr.key === 'output');
             if (!outputAttr) return '';
-
             return outputAttr.value.string_value || '';
         },
 
@@ -773,13 +788,14 @@ function sessionDetailApp() {
             }
         },
 
-        // Get TTFB (Time to First Byte) value from span attributes
         getTTFB(span) {
-            if (!span || !span.attributes) return null;
-
+            if (!span) return null;
+            if (span._normalized?.ttfb_seconds !== null && span._normalized?.ttfb_seconds !== undefined) {
+                return span._normalized.ttfb_seconds;
+            }
+            if (!span.attributes) return null;
             const ttfbAttr = span.attributes.find(a => a.key === 'metrics.ttfb');
             if (!ttfbAttr || !ttfbAttr.value.double_value) return null;
-
             return ttfbAttr.value.double_value;
         },
 
@@ -851,17 +867,17 @@ function sessionDetailApp() {
             return chunk.botText;
         },
 
-        // Format bar duration with interruption and slow latency icons if needed
         formatBarDuration(span) {
             if (!span) return '';
 
             let result = formatDuration(span.durationMs);
 
-            if (span.name === 'turn' && this.wasInterrupted(span)) {
+            const isTurn = span._normalized?.category === 'turn';
+            if (isTurn && this.wasInterrupted(span)) {
                 result += ` ${getIcon('interrupted', ICON_STYLES.small)}`;
             }
 
-            if (span.name === 'turn' && this.isSlowLatency(span)) {
+            if (isTurn && this.isSlowLatency(span)) {
                 result += ` ${getIcon('turtle', ICON_STYLES.small)}`;
             }
 
@@ -1042,9 +1058,16 @@ function sessionDetailApp() {
             return spans.map(s => textGetter(s)).filter(Boolean).join(' ');
         },
 
+        getChildSpansByCategory(parentSpan, category) {
+            return this.spans.filter(s =>
+                s.parent_span_id_hex === parentSpan.span_id_hex &&
+                s._normalized?.category === category
+            );
+        },
+
         buildTurnChunk(turn) {
-            const sttChildren = this.getChildSpansByName(turn, 'stt');
-            const llmChildren = this.getChildSpansByName(turn, 'llm');
+            const sttChildren = this.getChildSpansByCategory(turn, 'stt');
+            const llmChildren = this.getChildSpansByCategory(turn, 'llm');
 
             return {
                 span_id_hex: turn.span_id_hex,
@@ -1058,7 +1081,9 @@ function sessionDetailApp() {
 
         getTurnChunks() {
             if (!this.isDataReady()) return [];
-            return this.spans.filter(s => s.name === 'turn').map(turn => this.buildTurnChunk(turn));
+            return this.spans
+                .filter(s => s._normalized?.category === 'turn')
+                .map(turn => this.buildTurnChunk(turn));
         },
 
         // Real-time polling methods
@@ -1095,8 +1120,8 @@ function sessionDetailApp() {
         },
 
         isConversationComplete(data) {
-            const conversationSpan = data.spans.find(s => s.name === 'conversation');
-            return conversationSpan && conversationSpan.end_time_unix_nano;
+            const rootSpan = data.spans.find(s => s._normalized?.category === 'root');
+            return rootSpan && rootSpan.end_time_unix_nano;
         },
 
         isTraceAbandoned(data) {

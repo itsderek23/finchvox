@@ -183,7 +183,7 @@
                         <div class="relative h-5">
                             <template x-for="span in getSpansByType(spanType)" :key="span.span_id_hex">
                                 <div class="timeline-bar cursor-pointer"
-                                     :class="`bar-${span.name} ${(highlightedSpan?.span_id_hex === span.span_id_hex || selectedSpan?.span_id_hex === span.span_id_hex || chunkHoveredSpan?.span_id_hex === span.span_id_hex) ? 'selected' : ''}`"
+                                     :class="`${span._normalized?.css_class || 'bar-' + span.name} ${(highlightedSpan?.span_id_hex === span.span_id_hex || selectedSpan?.span_id_hex === span.span_id_hex || chunkHoveredSpan?.span_id_hex === span.span_id_hex) ? 'selected' : ''}`"
                                      :style="`left: ${getTimelineBarStyle(span).left}; width: ${getTimelineBarStyle(span).width}; opacity: ${selectedSpan && selectedSpan.span_id_hex !== span.span_id_hex ? 0.5 : 1}`"
                                      :data-span-id="span.span_id_hex"
                                      @click="selectSpan(span, true)"

@@ -36,15 +36,18 @@ class Conversation:
         if not parent_id:
             return None
         for s in self.spans:
-            if s.get("span_id_hex") == parent_id and s.get("name") == "turn":
-                return s
+            if s.get("span_id_hex") == parent_id:
+                normalized = s.get("_normalized", {})
+                if normalized.get("category") == "turn":
+                    return s
         return None
 
     def _get_turn_spans(self) -> dict[str, list[dict]]:
         turn_spans: dict[str, list[dict]] = {}
         for span in self.spans:
-            name = span.get("name")
-            if name not in ("stt", "tts"):
+            normalized = span.get("_normalized", {})
+            category = normalized.get("category")
+            if category not in ("stt", "tts"):
                 continue
             turn = self._get_parent_turn(span)
             if not turn:
@@ -58,23 +61,27 @@ class Conversation:
     def _get_orphan_spans(self) -> list[dict]:
         orphans = []
         for span in self.spans:
-            name = span.get("name")
-            if name not in ("stt", "tts"):
+            normalized = span.get("_normalized", {})
+            category = normalized.get("category")
+            if category not in ("stt", "tts"):
                 continue
             if self._get_parent_turn(span) is None:
                 orphans.append(span)
         return orphans
 
     def _get_span_text(self, span: dict) -> str:
-        name = span.get("name")
-        if name == "stt":
-            return self._get_attribute(span, "transcript") or ""
-        elif name == "tts":
-            return self._get_attribute(span, "text") or ""
+        normalized = span.get("_normalized", {})
+        category = normalized.get("category")
+        if category == "stt":
+            return normalized.get("transcript") or self._get_attribute(span, "transcript") or ""
+        elif category in ("tts", "llm"):
+            return normalized.get("output_text") or self._get_attribute(span, "text") or ""
         return ""
 
     def _get_span_role(self, span: dict) -> str:
-        return "user" if span.get("name") == "stt" else "assistant"
+        normalized = span.get("_normalized", {})
+        category = normalized.get("category")
+        return "user" if category == "stt" else "assistant"
 
     def _span_was_interrupted(self, span: dict) -> bool:
         turn = self._get_parent_turn(span)
@@ -179,7 +186,10 @@ class Conversation:
         if self._messages is not None:
             return self._messages
 
-        stt_tts_spans = [s for s in self.spans if s.get("name") in ("stt", "tts")]
+        stt_tts_spans = [
+            s for s in self.spans
+            if s.get("_normalized", {}).get("category") in ("stt", "tts", "llm")
+        ]
         spans_sorted = sorted(stt_tts_spans, key=lambda s: s.get("start_time_unix_nano", 0))
 
         all_messages: list[Message] = []

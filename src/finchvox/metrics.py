@@ -41,7 +41,7 @@ class TTFBSeries:
 
 
 class Metrics:
-    SERVICES = ("stt", "llm", "tts")
+    CATEGORIES = ("stt", "llm", "tts")
 
     def __init__(self, spans: list[dict]):
         self.spans = spans
@@ -93,7 +93,10 @@ class Metrics:
         )
 
     def _extract_ttfb_data_point(self, span: dict) -> TTFBDataPoint | None:
-        ttfb_seconds = self._get_attribute(span, "metrics.ttfb")
+        normalized = span.get("_normalized", {})
+        ttfb_seconds = normalized.get("ttfb_seconds")
+        if ttfb_seconds is None:
+            ttfb_seconds = self._get_attribute(span, "metrics.ttfb")
         if ttfb_seconds is None:
             return None
 
@@ -108,14 +111,15 @@ class Metrics:
         )
 
     def _collect_data_points(self) -> dict[str, list[TTFBDataPoint]]:
-        series: dict[str, list[TTFBDataPoint]] = {s: [] for s in self.SERVICES}
+        series: dict[str, list[TTFBDataPoint]] = {c: [] for c in self.CATEGORIES}
         for span in self.spans:
-            name = span.get("name")
-            if name not in self.SERVICES:
+            normalized = span.get("_normalized", {})
+            category = normalized.get("category")
+            if category not in self.CATEGORIES:
                 continue
             data_point = self._extract_ttfb_data_point(span)
             if data_point:
-                series[name].append(data_point)
+                series[category].append(data_point)
         return series
 
     def _build_series(self, service: str, data_points: list[TTFBDataPoint]) -> TTFBSeries:

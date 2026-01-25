@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from finchvox.adapters import detect_platform, PipecatAdapter, LiveKitAdapter
 from finchvox.audio_utils import find_chunks
 
 
@@ -55,25 +56,39 @@ class Session:
             return end_nano
         return current
 
+    def _detect_platform(self, spans: list[dict]) -> str:
+        return detect_platform(spans)
+
+    def _get_turn_span_names(self, platform: str) -> list[str]:
+        if platform == "livekit":
+            return LiveKitAdapter().get_turn_span_names()
+        return PipecatAdapter().get_turn_span_names()
+
     def _load_metadata(self):
         span_count = 0
         turn_count = 0
         min_start = None
         max_end = None
         service_name = None
+        spans = []
 
         try:
             with open(self.trace_file, 'r') as f:
                 for line in f:
                     if line.strip():
                         span = json.loads(line)
+                        spans.append(span)
                         span_count += 1
-                        if span.get("name") == "turn":
-                            turn_count += 1
                         min_start = self._update_min_start(min_start, span)
                         max_end = self._update_max_end(max_end, span)
                         if service_name is None:
                             service_name = self._extract_service_name(span)
+
+            platform = self._detect_platform(spans)
+            turn_span_names = self._get_turn_span_names(platform)
+            for span in spans:
+                if span.get("name") in turn_span_names:
+                    turn_count += 1
         except Exception as e:
             print(f"Error loading session {self.trace_file}: {e}")
 

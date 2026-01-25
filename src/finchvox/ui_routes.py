@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
+from finchvox.adapters import get_adapter
 from finchvox.audio_utils import find_chunks, combine_chunks
 from finchvox.conversation import Conversation
 from finchvox.metrics import Metrics
@@ -107,11 +108,17 @@ def _get_session_spans(data_dir: Path, session_id: str) -> list[dict]:
 
 async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResponse:
     spans = _get_session_spans(data_dir, session_id)
+    adapter = get_adapter(spans)
+    normalized_spans = adapter.normalize_spans(spans)
     last_span_time = None
-    for span in spans:
+    for span in normalized_spans:
         if "end_time_unix_nano" in span:
             last_span_time = span["end_time_unix_nano"]
-    return JSONResponse({"spans": spans, "last_span_time": last_span_time})
+    return JSONResponse({
+        "spans": normalized_spans,
+        "platform": adapter.get_platform(),
+        "last_span_time": last_span_time
+    })
 
 
 def _get_session_logs_raw(data_dir: Path, session_id: str) -> list[dict]:
@@ -191,7 +198,9 @@ async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) 
 
 async def _handle_get_session_conversation(data_dir: Path, session_id: str) -> JSONResponse:
     spans = _get_session_spans(data_dir, session_id)
-    conversation = Conversation(spans)
+    adapter = get_adapter(spans)
+    normalized_spans = adapter.normalize_spans(spans)
+    conversation = Conversation(normalized_spans)
     return JSONResponse({"messages": conversation.to_dict_list()})
 
 
@@ -289,5 +298,7 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     @app.get("/api/sessions/{session_id}/metrics")
     async def get_session_metrics(session_id: str) -> JSONResponse:
         spans = _get_session_spans(data_dir, session_id)
-        metrics = Metrics(spans)
+        adapter = get_adapter(spans)
+        normalized_spans = adapter.normalize_spans(spans)
+        metrics = Metrics(normalized_spans)
         return JSONResponse(metrics.to_dict())

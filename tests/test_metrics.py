@@ -6,6 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from finchvox.adapters import get_adapter
 from finchvox.metrics import Metrics, TTFBDataPoint, TTFBSeries, TTFBStats
 from finchvox.ui_routes import register_ui_routes
 
@@ -39,13 +40,31 @@ def create_session_with_spans(data_dir: Path, session_id: str, spans: list):
             f.write("\n")
 
 
+CATEGORY_MAP = {
+    "stt": "stt",
+    "llm": "llm",
+    "tts": "tts",
+    "turn": "turn",
+    "conversation": "root",
+}
+
+
 def make_span(name: str, start_nano: int, ttfb_seconds: float = None, span_id: str = "abc123"):
     span = {
         "name": name,
         "span_id_hex": span_id,
         "start_time_unix_nano": str(start_nano),
         "end_time_unix_nano": str(start_nano + 1000000000),
-        "attributes": []
+        "attributes": [],
+        "_normalized": {
+            "platform": "pipecat",
+            "display_name": name.upper(),
+            "category": CATEGORY_MAP.get(name, "other"),
+            "css_class": f"bar-{name}",
+            "transcript": None,
+            "output_text": None,
+            "ttfb_seconds": ttfb_seconds,
+        }
     }
     if ttfb_seconds is not None:
         span["attributes"].append({
