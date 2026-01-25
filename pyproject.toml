@@ -33,6 +33,13 @@ dev = [
     "ruff>=0.14.10",
     "twine>=6.2.0",
 ]
+livekit = [
+    "livekit-agents>=1.0.0",
+    "livekit-plugins-silero>=1.0.0",
+    "livekit-plugins-openai>=1.0.0",
+    "livekit-plugins-deepgram>=1.0.0",
+    "livekit-plugins-cartesia>=1.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]
