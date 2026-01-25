@@ -1,7 +1,14 @@
+from __future__ import annotations
+
 import logging
 from importlib.metadata import version
 from pathlib import Path
+from typing import TYPE_CHECKING
+
 from loguru import logger
+
+if TYPE_CHECKING:
+    from opentelemetry.sdk.trace import TracerProvider
 
 _initialized = False
 _allowed_log_modules: set[str] = {"pipecat.", "finchvox.", "__main__"}
@@ -202,4 +209,33 @@ def _setup_loguru_bridge() -> None:
 
 from finchvox.processor import FinchvoxProcessor
 
-__all__ = ["init", "FinchvoxProcessor"]
+
+def init_livekit(
+    service_name: str = "livekit-agent",
+    endpoint: str = "http://localhost:4317",
+    insecure: bool = True,
+    metadata: dict[str, str] | None = None,
+) -> TracerProvider:
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from livekit.agents.telemetry import set_tracer_provider
+
+    resource = Resource.create({SERVICE_NAME: service_name})
+    tracer_provider = TracerProvider(resource=resource)
+
+    exporter = OTLPSpanExporter(endpoint=endpoint, insecure=insecure)
+    tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
+
+    set_tracer_provider(tracer_provider, metadata=metadata)
+
+    logger.info(
+        f"Finchvox v{version('finchvox')} LiveKit initialized with "
+        f"service_name='{service_name}', endpoint='{endpoint}'"
+    )
+
+    return tracer_provider
+
+
+__all__ = ["init", "init_livekit", "FinchvoxProcessor"]
