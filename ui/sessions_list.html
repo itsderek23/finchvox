@@ -50,7 +50,7 @@
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Start Time</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Duration</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Audio</th>
-                    <th class="py-4 px-6 text-xs font-medium tracking-wide">Spans</th>
+                    <th class="py-4 px-6 text-xs font-medium tracking-wide">Turns</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide">Logs</th>
                     <th class="py-4 px-6 text-xs font-medium tracking-wide"></th>
                 </tr>
@@ -65,7 +65,7 @@
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDate(session.start_time)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatDuration(session.duration_ms)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="session.audio_size_mb !== null ? session.audio_size_mb + ' MB' : '—'"></td>
-                        <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(session.trace.span_count)"></td>
+                        <td class="py-4 px-6 text-white/70 text-sm" x-text="session.trace.turn_count > 0 ? formatCount(session.trace.turn_count) : '—'"></td>
                         <td class="py-4 px-6 text-white/70 text-sm" x-text="formatCount(session.log_count)"></td>
                         <td class="py-4 px-6 text-white/70 text-sm">
 

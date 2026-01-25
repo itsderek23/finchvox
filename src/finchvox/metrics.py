@@ -48,14 +48,21 @@ class Metrics:
         self._session_start_ms: float | None = None
         self._ttfb_series: dict[str, TTFBSeries] | None = None
 
+    def _find_min_start_nano(self) -> int | None:
+        min_start = None
+        for span in self.spans:
+            start = span.get("start_time_unix_nano")
+            if not start:
+                continue
+            start_int = int(start)
+            if min_start is None or start_int < min_start:
+                min_start = start_int
+        return min_start
+
     @property
     def session_start_ms(self) -> float:
         if self._session_start_ms is None:
-            min_start = None
-            for span in self.spans:
-                start = span.get("start_time_unix_nano")
-                if start and (min_start is None or int(start) < min_start):
-                    min_start = int(start)
+            min_start = self._find_min_start_nano()
             self._session_start_ms = (min_start or 0) / 1_000_000
         return self._session_start_ms
 
@@ -100,12 +107,8 @@ class Metrics:
             span_id=span.get("span_id_hex", "")
         )
 
-    def get_ttfb_series(self) -> dict[str, TTFBSeries]:
-        if self._ttfb_series is not None:
-            return self._ttfb_series
-
+    def _collect_data_points(self) -> dict[str, list[TTFBDataPoint]]:
         series: dict[str, list[TTFBDataPoint]] = {s: [] for s in self.SERVICES}
-
         for span in self.spans:
             name = span.get("name")
             if name not in self.SERVICES:
@@ -113,14 +116,23 @@ class Metrics:
             data_point = self._extract_ttfb_data_point(span)
             if data_point:
                 series[name].append(data_point)
+        return series
 
-        result = {}
-        for service, data_points in series.items():
-            if not data_points:
-                continue
-            data_points.sort(key=lambda dp: dp.timestamp_ms)
-            stats = self._compute_stats([dp.ttfb_ms for dp in data_points])
-            result[service] = TTFBSeries(service=service, data_points=data_points, stats=stats)
+    def _build_series(self, service: str, data_points: list[TTFBDataPoint]) -> TTFBSeries:
+        data_points.sort(key=lambda dp: dp.timestamp_ms)
+        stats = self._compute_stats([dp.ttfb_ms for dp in data_points])
+        return TTFBSeries(service=service, data_points=data_points, stats=stats)
+
+    def get_ttfb_series(self) -> dict[str, TTFBSeries]:
+        if self._ttfb_series is not None:
+            return self._ttfb_series
+
+        series = self._collect_data_points()
+        result = {
+            service: self._build_series(service, data_points)
+            for service, data_points in series.items()
+            if data_points
+        }
 
         self._ttfb_series = result
         return result

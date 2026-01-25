@@ -6,12 +6,12 @@ from finchvox.audio_utils import find_chunks
 
 
 class Trace:
-    def __init__(self, span_count: int):
-        self.span_count = span_count
+    def __init__(self, turn_count: int):
+        self.turn_count = turn_count
 
     def to_dict(self) -> dict:
         return {
-            "span_count": self.span_count,
+            "turn_count": self.turn_count,
         }
 
 
@@ -20,6 +20,7 @@ class Session:
         self.session_dir = session_dir
         self.session_id = session_dir.name
         self._span_count: Optional[int] = None
+        self._turn_count: Optional[int] = None
         self._log_count: Optional[int] = None
         self._min_start_nano: Optional[int] = None
         self._max_end_nano: Optional[int] = None
@@ -56,6 +57,7 @@ class Session:
 
     def _load_metadata(self):
         span_count = 0
+        turn_count = 0
         min_start = None
         max_end = None
         service_name = None
@@ -66,6 +68,8 @@ class Session:
                     if line.strip():
                         span = json.loads(line)
                         span_count += 1
+                        if span.get("name") == "turn":
+                            turn_count += 1
                         min_start = self._update_min_start(min_start, span)
                         max_end = self._update_max_end(max_end, span)
                         if service_name is None:
@@ -74,6 +78,7 @@ class Session:
             print(f"Error loading session {self.trace_file}: {e}")
 
         self._span_count = span_count
+        self._turn_count = turn_count
         self._min_start_nano = min_start
         self._max_end_nano = max_end
         self._service_name = service_name
@@ -98,6 +103,10 @@ class Session:
     @property
     def span_count(self) -> int:
         return self._span_count or 0
+
+    @property
+    def turn_count(self) -> int:
+        return self._turn_count or 0
 
     @property
     def log_count(self) -> int:
@@ -127,7 +136,7 @@ class Session:
 
     @property
     def trace(self) -> Trace:
-        return Trace(span_count=self.span_count)
+        return Trace(turn_count=self.turn_count)
 
     def get_audio_size_bytes(self) -> Optional[int]:
         sessions_base_dir = self.session_dir.parent
