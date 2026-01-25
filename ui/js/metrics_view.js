@@ -43,105 +43,112 @@ function metricsViewMixin() {
                 const canvas = document.getElementById(`ttfb-chart-${service}`);
                 if (!canvas) continue;
 
-                const ctx = canvas.getContext('2d');
                 const seriesData = this.metricsData.series[service];
                 if (!seriesData || !seriesData.data_points.length) continue;
 
-                const dataPoints = seriesData.data_points.map(p => ({
-                    x: p.relative_time_ms / 1000,
-                    y: p.ttfb_ms,
-                    span_id: p.span_id
-                }));
-
                 canvas.addEventListener('mouseleave', () => this.hideMarkerFromMetrics());
-
-                this.metricsCharts[service] = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        datasets: [{
-                            label: `${service.toUpperCase()} TTFB`,
-                            data: dataPoints,
-                            borderColor: this.getServiceColor(service),
-                            backgroundColor: this.getServiceColor(service) + '33',
-                            borderWidth: 2,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            pointBackgroundColor: this.getServiceColor(service),
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 1,
-                            tension: 0.1,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'nearest',
-                            axis: 'x',
-                            intersect: false
-                        },
-                        onClick: (event, elements) => this.handleChartClick(service, elements),
-                        onHover: (event, elements) => this.handleChartHover(service, elements),
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                titleColor: '#ffffff',
-                                bodyColor: '#ffffff',
-                                borderColor: this.getServiceColor(service),
-                                borderWidth: 1,
-                                padding: 10,
-                                displayColors: false,
-                                callbacks: {
-                                    title: (items) => {
-                                        if (!items.length) return '';
-                                        const time = items[0].parsed.x;
-                                        return `Time: ${this.formatMetricsTime(time)}`;
-                                    },
-                                    label: (context) => {
-                                        return `TTFB: ${context.parsed.y.toFixed(1)}ms`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'linear',
-                                title: {
-                                    display: false
-                                },
-                                ticks: {
-                                    color: 'rgba(255, 255, 255, 0.5)',
-                                    font: { size: 10, family: 'monospace' },
-                                    callback: (value) => this.formatMetricsTime(value)
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.05)'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Time (ms)',
-                                    color: 'rgba(255, 255, 255, 0.5)',
-                                    font: { size: 12 }
-                                },
-                                ticks: {
-                                    color: 'rgba(255, 255, 255, 0.5)',
-                                    font: { size: 12, family: 'monospace' }
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.05)'
-                                },
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
+                this.metricsCharts[service] = new Chart(
+                    canvas.getContext('2d'),
+                    this.createChartConfig(service, seriesData)
+                );
             }
+        },
+
+        createChartConfig(service, seriesData) {
+            const color = this.getServiceColor(service);
+            const dataPoints = seriesData.data_points.map(p => ({
+                x: p.relative_time_ms / 1000,
+                y: p.ttfb_ms,
+                span_id: p.span_id
+            }));
+
+            return {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: `${service.toUpperCase()} TTFB`,
+                        data: dataPoints,
+                        borderColor: color,
+                        backgroundColor: color + '33',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: this.createChartOptions(service, color)
+            };
+        },
+
+        createChartOptions(service, color) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                onClick: (event, elements) => this.handleChartClick(service, elements),
+                onHover: (event, elements) => this.handleChartHover(service, elements),
+                plugins: {
+                    legend: { display: false },
+                    tooltip: this.createTooltipConfig(color)
+                },
+                scales: {
+                    x: this.createXAxisConfig(),
+                    y: this.createYAxisConfig()
+                }
+            };
+        },
+
+        createTooltipConfig(color) {
+            return {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#ffffff',
+                bodyColor: '#ffffff',
+                borderColor: color,
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false,
+                callbacks: {
+                    title: (items) => {
+                        if (!items.length) return '';
+                        return `Time: ${this.formatMetricsTime(items[0].parsed.x)}`;
+                    },
+                    label: (context) => `TTFB: ${context.parsed.y.toFixed(1)}ms`
+                }
+            };
+        },
+
+        createXAxisConfig() {
+            return {
+                type: 'linear',
+                title: { display: false },
+                ticks: {
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    font: { size: 10, family: 'monospace' },
+                    callback: (value) => this.formatMetricsTime(value)
+                },
+                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            };
+        },
+
+        createYAxisConfig() {
+            return {
+                title: {
+                    display: true,
+                    text: 'Time (ms)',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    font: { size: 12 }
+                },
+                ticks: {
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    font: { size: 12, family: 'monospace' }
+                },
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                beginAtZero: true
+            };
         },
 
         handleChartClick(service, elements) {

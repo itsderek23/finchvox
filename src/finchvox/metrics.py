@@ -85,6 +85,21 @@ class Metrics:
             count=n
         )
 
+    def _extract_ttfb_data_point(self, span: dict) -> TTFBDataPoint | None:
+        ttfb_seconds = self._get_attribute(span, "metrics.ttfb")
+        if ttfb_seconds is None:
+            return None
+
+        start_nano = int(span.get("start_time_unix_nano", 0))
+        timestamp_ms = start_nano / 1_000_000
+
+        return TTFBDataPoint(
+            timestamp_ms=timestamp_ms,
+            relative_time_ms=timestamp_ms - self.session_start_ms,
+            ttfb_ms=ttfb_seconds * 1000,
+            span_id=span.get("span_id_hex", "")
+        )
+
     def get_ttfb_series(self) -> dict[str, TTFBSeries]:
         if self._ttfb_series is not None:
             return self._ttfb_series
@@ -95,21 +110,9 @@ class Metrics:
             name = span.get("name")
             if name not in self.SERVICES:
                 continue
-
-            ttfb_seconds = self._get_attribute(span, "metrics.ttfb")
-            if ttfb_seconds is None:
-                continue
-
-            start_nano = int(span.get("start_time_unix_nano", 0))
-            timestamp_ms = start_nano / 1_000_000
-            relative_time_ms = timestamp_ms - self.session_start_ms
-
-            series[name].append(TTFBDataPoint(
-                timestamp_ms=timestamp_ms,
-                relative_time_ms=relative_time_ms,
-                ttfb_ms=ttfb_seconds * 1000,
-                span_id=span.get("span_id_hex", "")
-            ))
+            data_point = self._extract_ttfb_data_point(span)
+            if data_point:
+                series[name].append(data_point)
 
         result = {}
         for service, data_points in series.items():
