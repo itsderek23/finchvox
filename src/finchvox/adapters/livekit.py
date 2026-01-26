@@ -12,8 +12,8 @@ SPAN_CONFIGS = {
     ),
     "user_turn": SpanTypeConfig(
         display_name="USER_TURN",
-        category="turn",
-        css_class="bar-turn",
+        category="stt",
+        css_class="bar-stt",
     ),
     "agent_turn": SpanTypeConfig(
         display_name="AGENT_TURN",
