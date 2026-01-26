@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from finchvox.adapters.base import BaseTraceAdapter, SpanTypeConfig
@@ -101,6 +102,35 @@ class LiveKitAdapter(BaseTraceAdapter):
         return self._get_attribute(span, "output")
 
     def get_ttfb(self, span: dict) -> Optional[float]:
+        span_name = span.get("name", "")
+
+        if span_name == "llm_request":
+            metrics_json = self._get_attribute(span, "lk.llm_metrics")
+            if metrics_json:
+                try:
+                    metrics = json.loads(metrics_json)
+                    ttft = metrics.get("ttft")
+                    if ttft is not None:
+                        return ttft
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+        if span_name == "tts_request":
+            metrics_json = self._get_attribute(span, "lk.tts_metrics")
+            if metrics_json:
+                try:
+                    metrics = json.loads(metrics_json)
+                    ttfb = metrics.get("ttfb")
+                    if ttfb is not None:
+                        return ttfb
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+        if span_name in ("user_turn", "user_speaking"):
+            delay = self._get_attribute(span, "lk.transcription_delay")
+            if delay is not None:
+                return delay
+
         ttfb = self._get_attribute(span, "lk.ttfb")
         if ttfb is not None:
             return ttfb
