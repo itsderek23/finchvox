@@ -450,6 +450,18 @@
                     <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'output')"></pre>
                 </div>
 
+                <!-- LiveKit LLM Input -->
+                <div x-show="selectedSpan?._normalized?.platform === 'livekit' && selectedSpan?.name === 'llm_request' && hasLivekitLlmInput(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Input</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatLivekitLlmInput(selectedSpan)"></pre>
+                </div>
+
+                <!-- LiveKit LLM Output -->
+                <div x-show="selectedSpan?._normalized?.platform === 'livekit' && selectedSpan?.name === 'llm_request' && hasLivekitLlmOutput(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Output</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatLivekitLlmOutput(selectedSpan)"></pre>
+                </div>
+
                 <!-- TTS Text -->
                 <div x-show="selectedSpan?.name === 'tts' && hasAttribute(selectedSpan, 'text')">
                     <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Text</label>

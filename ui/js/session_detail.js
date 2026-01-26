@@ -912,6 +912,54 @@ function sessionDetailApp() {
             return JSON.stringify(toolCalls, null, 2);
         },
 
+        getLivekitLlmInputMessages(span) {
+            if (!span || !span.events) return [];
+
+            const messageEvents = ['gen_ai.system.message', 'gen_ai.user.message', 'gen_ai.assistant.message'];
+            return span.events
+                .filter(e => messageEvents.includes(e.name))
+                .map(e => {
+                    const role = e.name.replace('gen_ai.', '').replace('.message', '');
+                    const contentAttr = e.attributes?.find(a => a.key === 'content');
+                    const content = contentAttr?.value?.string_value || '';
+                    return { role, content };
+                });
+        },
+
+        hasLivekitLlmInput(span) {
+            return this.getLivekitLlmInputMessages(span).length > 0;
+        },
+
+        formatLivekitLlmInput(span) {
+            const messages = this.getLivekitLlmInputMessages(span);
+            return JSON.stringify(messages, null, 2);
+        },
+
+        getLivekitLlmChoice(span) {
+            if (!span || !span.events) return null;
+
+            const choiceEvent = span.events.find(e => e.name === 'gen_ai.choice');
+            if (!choiceEvent) return null;
+
+            const roleAttr = choiceEvent.attributes?.find(a => a.key === 'role');
+            const contentAttr = choiceEvent.attributes?.find(a => a.key === 'content');
+
+            return {
+                role: roleAttr?.value?.string_value || 'assistant',
+                content: contentAttr?.value?.string_value || ''
+            };
+        },
+
+        hasLivekitLlmOutput(span) {
+            return this.getLivekitLlmChoice(span) !== null;
+        },
+
+        formatLivekitLlmOutput(span) {
+            const choice = this.getLivekitLlmChoice(span);
+            if (!choice) return '{}';
+            return JSON.stringify(choice, null, 2);
+        },
+
         // Get raw span JSON (excluding computed properties)
         getRawSpanJSON(span) {
             if (!span) return '{}';
