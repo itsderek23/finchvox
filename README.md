@@ -15,6 +15,7 @@ _👇 Click the image for a short video:_
 - [Configuration](#configuration)
 - [Usage](#usage---finchvox-server)
 - [Troubleshooting](#troubleshooting)
+- [Telemetry](#telemetry)
 
 ## Prerequisites
 
@@ -95,3 +96,25 @@ uv run finchvox --help
 
 1. Check collector is running: Look for "OTLP collector listening on port 4317" log message
 2. Verify client endpoint: Ensure Pipecat is configured to send to `http://localhost:4317`
+
+## Telemetry
+
+FinchVox collects minimal, anonymous usage telemetry to help improve the project. No personal data, IP addresses, or session content is collected.
+
+**What's collected:**
+- Event type (`server_start`, `session_ingest`, `session_view`)
+- FinchVox version
+- Operating system (macOS, Linux, or Windows)
+- Timestamp
+
+**Disable telemetry:**
+
+```bash
+finchvox start --telemetry false
+```
+
+Or set the environment variable:
+
+```bash
+export FINCHVOX_TELEMETRY=false
+```
