@@ -7,6 +7,7 @@ Provides subcommands:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from finchvox.server import UnifiedServer
@@ -31,7 +32,9 @@ def cmd_version(args):
 
 def cmd_start(args):
     """Handle the 'start' subcommand."""
-    # Resolve data directory
+    if args.telemetry.lower() == "false":
+        os.environ["FINCHVOX_TELEMETRY"] = "false"
+
     if args.data_dir:
         data_dir = Path(args.data_dir).expanduser().resolve()
     else:
@@ -107,6 +110,12 @@ Examples:
         type=str,
         default=None,
         help="Data directory for traces/logs/audio/exceptions (default: ~/.finchvox)"
+    )
+    start_parser.add_argument(
+        "--telemetry",
+        type=str,
+        default="true",
+        help="Enable or disable anonymous usage telemetry (default: true)"
     )
     start_parser.set_defaults(func=cmd_start)
 

@@ -3,6 +3,7 @@ from pathlib import Path
 from loguru import logger
 from google.protobuf.json_format import MessageToDict
 from finchvox.collector.config import get_session_dir
+from finchvox import telemetry
 
 
 class SpanWriter:
@@ -35,6 +36,7 @@ class SpanWriter:
             if is_new_session:
                 span_name = span.name if span.name else "UNKNOWN"
                 logger.info(f"New session {trace_id_hex} - first span type: {span_name}")
+                telemetry.send_event("session_ingest")
             else:
                 with trace_file.open('r') as f:
                     span_count = sum(1 for _ in f)

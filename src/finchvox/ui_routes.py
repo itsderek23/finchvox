@@ -18,6 +18,7 @@ from finchvox.collector.config import (
     get_session_exceptions_dir,
     get_default_data_dir
 )
+from finchvox import telemetry
 
 
 UI_DIR = Path(__file__).parent / "ui"
@@ -247,6 +248,7 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/sessions/{session_id}")
     async def session_detail_page(session_id: str):
+        telemetry.send_event("session_view")
         return FileResponse(str(UI_DIR / "session_detail.html"))
 
     @app.get("/api/sessions")

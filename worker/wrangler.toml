@@ -1,0 +1,8 @@
+name = "finchvox-telemetry"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "PINGS"
+id = "d85f960b92bf4485b912cbfadd6c88fd"
+preview_id = "9f87017666464db3ac08c84d5caef143"

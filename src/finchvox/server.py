@@ -33,6 +33,7 @@ from finchvox.collector.config import (
     get_default_data_dir,
     get_sessions_base_dir
 )
+from finchvox import telemetry
 
 
 class UnifiedServer:
@@ -148,10 +149,10 @@ class UnifiedServer:
 
     async def start(self):
         """Start both gRPC and HTTP servers concurrently."""
-        # Start gRPC server
+        telemetry.send_event("server_start", dedupe=True)
+
         await self.start_grpc()
 
-        # Start HTTP server (this blocks until shutdown)
         await self.start_http()
 
     async def stop(self, grace_period: int = 5):
