@@ -34,7 +34,7 @@ npm run dev
 ```json
 {
   "event": "server_start" | "session_ingest" | "session_view",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "os": "darwin" | "linux" | "windows"
 }
 ```
