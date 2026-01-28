@@ -1,17 +1,13 @@
 const JSON_HEADERS = { "Content-Type": "application/json" };
+const STATS_KEY = "stats";
 
-async function handleGet(env) {
-  const keys = await env.PINGS.list();
-  const stats = {};
-  for (const key of keys.keys) {
-    stats[key.name] = await env.PINGS.get(key.name);
-  }
-  return new Response(JSON.stringify(stats, null, 2), { headers: JSON_HEADERS });
+async function getStats(env) {
+  return JSON.parse(await env.PINGS.get(STATS_KEY) || "{}");
 }
 
-async function incrementCounter(kv, key) {
-  const current = parseInt(await kv.get(key) || "0") + 1;
-  await kv.put(key, current.toString());
+async function handleGet(env) {
+  const stats = await getStats(env);
+  return new Response(JSON.stringify(stats, null, 2), { headers: JSON_HEADERS });
 }
 
 async function handlePost(request, env) {
@@ -20,11 +16,12 @@ async function handlePost(request, env) {
   const version = data.version || "unknown";
   const os = data.os || "unknown";
 
-  await Promise.all([
-    incrementCounter(env.PINGS, `total:${event}`),
-    incrementCounter(env.PINGS, `version:${version}:${event}`),
-    incrementCounter(env.PINGS, `os:${os}:${event}`)
-  ]);
+  const stats = await getStats(env);
+  const keys = [`total:${event}`, `version:${version}:${event}`, `os:${os}:${event}`];
+  for (const key of keys) {
+    stats[key] = (stats[key] || 0) + 1;
+  }
+  await env.PINGS.put(STATS_KEY, JSON.stringify(stats));
 
   return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
 }
