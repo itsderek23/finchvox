@@ -1,6 +1,6 @@
 # Finchvox Tracing for Pipecat
 
-This demo showcases OpenTelemetry tracing integration + audio recordings for Pipecat apps using Finchvox.
+This demo showcases session recording for Pipecat apps using Finchvox.
 
 ## Setup Instructions
 
@@ -24,10 +24,18 @@ uv sync
 
 ### 4. Run the Demo
 
+Start the FinchVox server:
+
+```bash
+finchvox start
+```
+
+Run the bot:
+
 ```bash
 uv run bot.py
 ```
 
 ### 5. View Traces in Finchvox
 
-Open your browser to [http://localhost:3000](http://localhost:3000) and view traces.
+Open your browser to [http://localhost:3000](http://localhost:3000) to view session recordings.
