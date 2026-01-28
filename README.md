@@ -20,7 +20,7 @@ _👇 Click the image for a short video:_
 ## Prerequisites
 
 - Python 3.10 or higher
-- A Pipecat Voice AI application
+- Pipecat 0.0.68 or higher
 
 ## Installation
 
@@ -102,6 +102,7 @@ uv run finchvox --help
 FinchVox collects minimal, anonymous usage telemetry to help improve the project. No personal data, IP addresses, or session content is collected.
 
 **What's collected:**
+
 - Event type (`server_start`, `session_ingest`, `session_view`)
 - FinchVox version
 - Operating system (macOS, Linux, or Windows)
