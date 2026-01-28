@@ -16,6 +16,22 @@ def init(
     log_modules: list[str] | None = None,
     app_root: str | Path | None = None,
 ) -> None:
+    """Initialize Finchvox tracing and log capture for a Pipecat application.
+
+    Must be called before the Pipecat pipeline starts. Sets up OpenTelemetry
+    trace export to the Finchvox server and optionally bridges application
+    logs (stdlib logging and loguru) into the trace context.
+
+    Args:
+        service_name: Name identifying this application in traces.
+        endpoint: gRPC endpoint of the Finchvox server.
+        insecure: Use insecure (non-TLS) gRPC connection.
+        capture_logs: Bridge application logs into OpenTelemetry traces.
+        log_modules: Additional module prefixes whose logs should be captured
+            (e.g. ``["myapp."]``). Pipecat and finchvox logs are always captured.
+        app_root: Root directory of the application source. Logs from files
+            under this path are captured automatically. Defaults to ``cwd()``.
+    """
     global _initialized, _allowed_log_modules, _app_root
 
     if _initialized:
