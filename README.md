@@ -5,7 +5,7 @@ Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flippi
 Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
 
 _👇 Click the image for a short video:_
-<a href="https://raw.githubusercontent.com/itsderek23/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
+<a href="https://raw.githubusercontent.com/finchvox/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
 
 ## Table of Contents
 
