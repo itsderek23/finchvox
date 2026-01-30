@@ -4,9 +4,9 @@ version = "0.0.1"
 description = "A Pipecat example using Finchvox OTEL tracing"
 requires-python = ">=3.10,<3.14"
 dependencies = [
-    "pipecat-ai[daily,webrtc,websocket,silero,cartesia,deepgram,openai,tracing,runner]>=0.0.82",
+    "pipecat-ai[daily,webrtc,websocket,silero,cartesia,deepgram,openai,tracing,runner]",
     "finchvox",
 ]
 
 [tool.uv.sources]
-finchvox = { path = "../..", editable = true }
+finchvox = { path = "../../..", editable = true }
