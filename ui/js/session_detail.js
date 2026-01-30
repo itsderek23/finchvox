@@ -319,7 +319,19 @@ function sessionDetailApp() {
             const totalDuration = this.maxTime - this.minTime;
             const startPercent = ((span.startMs - this.minTime) / totalDuration) * 100;
             const durationPercent = (span.durationMs / totalDuration) * 100;
-            const widthPercent = Math.max(durationPercent, 0.15); // Minimum 0.15% for visibility
+            let widthPercent = Math.max(durationPercent, 0.15);
+
+            const spans = this.getSpansByType(span.name);
+            const spanIndex = spans.findIndex(s => s.span_id_hex === span.span_id_hex);
+            if (spanIndex !== -1 && spanIndex < spans.length - 1) {
+                const nextSpan = spans[spanIndex + 1];
+                const spanEndMs = span.startMs + span.durationMs;
+                const gapMs = nextSpan.startMs - spanEndMs;
+                const gapPercent = (gapMs / totalDuration) * 100;
+                if (gapPercent < 0.3) {
+                    widthPercent = Math.max(widthPercent - 0.3, 0.15);
+                }
+            }
 
             return {
                 left: `${startPercent}%`,
