@@ -189,7 +189,7 @@
                                      @click="selectSpan(span, true)"
                                      @mouseenter="highlightSpan(span)"
                                      @mouseleave="unhighlightSpan()">
-                                    <span x-show="!hasOverlappingLabels(spanType)" class="text-white/85 text-[10px] font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
+                                    <span x-show="!shouldHideLabel(span)" class="text-white/85 text-xs font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
                                 </div>
                             </template>
                         </div>
@@ -424,6 +424,10 @@
                         <label class="text-white/40 font-semibold text-xs">End time</label>
                         <span class="text-white text-xs" x-text="formatTimestamp(selectedSpan?.end_time_unix_nano)"></span>
                     </div>
+                    <div class="grid grid-cols-[150px_1fr] gap-4" x-show="spanHasToolCalls(selectedSpan)">
+                        <label class="text-white/40 font-semibold text-xs">Tool Calls</label>
+                        <span class="text-white text-xs" x-text="getToolCallNames(selectedSpan)"></span>
+                    </div>
                     <div class="grid grid-cols-[150px_1fr] gap-4" x-show="wasInterrupted(selectedSpan) !== null">
                         <label class="text-white/40 font-semibold text-xs">Interrupted?</label>
                         <span class="text-white text-xs" x-html="formatInterrupted(selectedSpan)"></span>
@@ -460,6 +464,18 @@
                 <div x-show="selectedSpan?.name === 'stt' && hasAttribute(selectedSpan, 'transcript')">
                     <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Transcript</label>
                     <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'transcript')"></pre>
+                </div>
+
+                <!-- Turn User Transcript -->
+                <div x-show="selectedSpan?.name === 'turn' && getTurnUserTranscript(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">User</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getTurnUserTranscript(selectedSpan)"></pre>
+                </div>
+
+                <!-- Turn Bot Response -->
+                <div x-show="selectedSpan?.name === 'turn' && getTurnBotText(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Agent</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getTurnBotText(selectedSpan)"></pre>
                 </div>
 
                 <!-- Raw Span JSON -->

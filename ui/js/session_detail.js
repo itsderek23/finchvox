@@ -6,12 +6,16 @@ const ICONS = {
     interrupted: {
         viewBox: '0 0 24 24',
         path: 'M10.5 1.875a1.125 1.125 0 0 1 2.25 0v8.219c.517.162 1.02.382 1.5.659V3.375a1.125 1.125 0 0 1 2.25 0v10.937a4.505 4.505 0 0 0-3.25 2.373 8.963 8.963 0 0 1 4-.935A.75.75 0 0 0 18 15v-2.266a3.368 3.368 0 0 1 .988-2.37 1.125 1.125 0 0 1 1.591 1.59 1.118 1.118 0 0 0-.329.79v3.006h-.005a6 6 0 0 1-1.752 4.007l-1.736 1.736a6 6 0 0 1-4.242 1.757H10.5a7.5 7.5 0 0 1-7.5-7.5V6.375a1.125 1.125 0 0 1 2.25 0v5.519c.46-.452.965-.832 1.5-1.141V3.375a1.125 1.125 0 0 1 2.25 0v6.526c.495-.1.997-.151 1.5-.151V1.875Z'
+    },
+    tool: {
+        viewBox: '0 0 24 24',
+        path: 'M12 6.75a5.25 5.25 0 0 1 6.775-5.025.75.75 0 0 1 .313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.64l3.318-3.319a.75.75 0 0 1 1.248.313 5.25 5.25 0 0 1-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 1 1 2.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0 1 12 6.75ZM4.117 19.125a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75v-.008Z'
     }
 };
 
 const ICON_STYLES = {
-    default: 'width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-left: 4px; fill: currentColor;',
-    small: 'width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-left: 3px; fill: currentColor;'
+    default: 'width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-left: 2px; fill: currentColor;',
+    small: 'width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-left: 1.5px; fill: currentColor;'
 };
 
 function getIcon(name, style = ICON_STYLES.default) {
@@ -285,28 +289,29 @@ function sessionDetailApp() {
                 .sort((a, b) => a.startMs - b.startMs);
         },
 
-        hasOverlappingLabels(spanType) {
-            const spans = this.getSpansByType(spanType);
-            if (spans.length < 2) return false;
-
+        shouldHideLabel(span) {
             const totalDuration = this.maxTime - this.minTime;
             if (totalDuration === 0) return false;
 
-            const minWidthForInternalLabel = 2;
-            const labelOverflowBuffer = 2;
+            const spans = this.getSpansByType(span.name);
+            const spanIndex = spans.findIndex(s => s.span_id_hex === span.span_id_hex);
+            if (spanIndex === -1) return false;
 
-            for (let i = 0; i < spans.length - 1; i++) {
-                const current = spans[i];
-                const next = spans[i + 1];
+            const minWidthForInternalLabel = 4;
+            const labelOverflowBuffer = 4;
 
-                const currentWidthPercent = (current.durationMs / totalDuration) * 100;
-                const currentEndPercent = ((current.endMs - this.minTime) / totalDuration) * 100;
+            const widthPercent = (span.durationMs / totalDuration) * 100;
+            const labelOverflows = widthPercent < minWidthForInternalLabel;
+
+            if (!labelOverflows) return false;
+
+            if (spanIndex < spans.length - 1) {
+                const next = spans[spanIndex + 1];
+                const endPercent = ((span.endMs - this.minTime) / totalDuration) * 100;
                 const nextStartPercent = ((next.startMs - this.minTime) / totalDuration) * 100;
-                const gap = nextStartPercent - currentEndPercent;
+                const gap = nextStartPercent - endPercent;
 
-                const currentLabelOverflows = currentWidthPercent < minWidthForInternalLabel;
-
-                if (currentLabelOverflows && gap < labelOverflowBuffer) {
+                if (gap < labelOverflowBuffer) {
                     return true;
                 }
             }
@@ -318,7 +323,19 @@ function sessionDetailApp() {
             const totalDuration = this.maxTime - this.minTime;
             const startPercent = ((span.startMs - this.minTime) / totalDuration) * 100;
             const durationPercent = (span.durationMs / totalDuration) * 100;
-            const widthPercent = Math.max(durationPercent, 0.15); // Minimum 0.15% for visibility
+            let widthPercent = Math.max(durationPercent, 0.15);
+
+            const spans = this.getSpansByType(span.name);
+            const spanIndex = spans.findIndex(s => s.span_id_hex === span.span_id_hex);
+            if (spanIndex !== -1 && spanIndex < spans.length - 1) {
+                const nextSpan = spans[spanIndex + 1];
+                const spanEndMs = span.startMs + span.durationMs;
+                const gapMs = nextSpan.startMs - spanEndMs;
+                const gapPercent = (gapMs / totalDuration) * 100;
+                if (gapPercent < 0.3) {
+                    widthPercent = Math.max(widthPercent - 0.3, 0.15);
+                }
+            }
 
             return {
                 left: `${startPercent}%`,
@@ -740,6 +757,18 @@ function sessionDetailApp() {
             return outputAttr.value.string_value || '';
         },
 
+        getTurnUserTranscript(span) {
+            if (!span || span.name !== 'turn') return '';
+            const sttChildren = this.getChildSpansByName(span, 'stt');
+            return this.collectTextFromSpans(sttChildren, s => this.getTranscriptText(s));
+        },
+
+        getTurnBotText(span) {
+            if (!span || span.name !== 'turn') return '';
+            const llmChildren = this.getChildSpansByName(span, 'llm');
+            return this.collectTextFromSpans(llmChildren, s => this.getOutputText(s));
+        },
+
         // Get a specific attribute value
         getAttribute(span, key) {
             if (!span || !span.attributes) return null;
@@ -857,6 +886,10 @@ function sessionDetailApp() {
 
             let result = formatDuration(span.durationMs);
 
+            if (span.name === 'llm' && this.spanHasToolCalls(span)) {
+                result += ` ${getIcon('tool', ICON_STYLES.small)}`;
+            }
+
             if (span.name === 'turn' && this.wasInterrupted(span)) {
                 result += ` ${getIcon('interrupted', ICON_STYLES.small)}`;
             }
@@ -886,6 +919,16 @@ function sessionDetailApp() {
             } catch (e) {
                 return [];
             }
+        },
+
+        spanHasToolCalls(span) {
+            return this.getToolCalls(span).length > 0;
+        },
+
+        getToolCallNames(span) {
+            const toolCalls = this.getToolCalls(span);
+            if (toolCalls.length === 0) return '';
+            return toolCalls.map(tc => tc.function?.name || 'unknown').join(', ');
         },
 
         // Format tool calls as JSON
