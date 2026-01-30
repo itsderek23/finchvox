@@ -1,11 +1,11 @@
-# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - elevated debugging for Pipecat Voice AI
+# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - Voice AI Observability, Elevated.
 
-Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps.
+Meet Finchvox, local session replay purpose-built for Voice AI apps.
 
-Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
+Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Finchvox is currently designed for local, development usage. Visit [Finchvox.dev](https://finchvox.dev) to signup for our production-ready hosted and self-hosted options.
 
 _👇 Click the image for a short video:_
-<a href="https://raw.githubusercontent.com/finchvox/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
+<a href="https://github.com/user-attachments/assets/f093e764-82ae-41cb-9089-4e2d19c7867f" target="_blank"><img src="./docs/screenshot.png" /></a>
 
 ## Table of Contents
 
