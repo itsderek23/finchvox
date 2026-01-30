@@ -5,11 +5,8 @@
 #
 
 import os
-import sys
-import finchvox
-from dotenv import load_dotenv
 
-from finchvox import FinchvoxProcessor
+from dotenv import load_dotenv
 from loguru import logger
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
@@ -19,7 +16,9 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+from pipecat.processors.aggregators.llm_response_universal import (
+    LLMContextAggregatorPair,
+)
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.cartesia.tts import CartesiaTTSService
@@ -30,13 +29,39 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams
 
+import finchvox
+from finchvox import FinchvoxProcessor
+
 load_dotenv(override=True)
 
 finchvox.init(service_name="pipecat-demo")
 
 
-async def fetch_weather_from_api(params: FunctionCallParams):
-    await params.result_callback({"conditions": "nice", "temperature": "75"})
+async def add_item_to_order(params: FunctionCallParams):
+    item = params.arguments.get("item", "item")
+    size = params.arguments.get("size", "")
+    modifications = params.arguments.get("modifications", [])
+    description = f"{size} {item}".strip()
+    if modifications:
+        description += f" with {', '.join(modifications)}"
+    await params.result_callback({"success": True, "item": description})
+
+
+async def remove_item_from_order(params: FunctionCallParams):
+    item = params.arguments.get("item", "item")
+    await params.result_callback({"success": True, "removed": item})
+
+
+async def get_order_summary(params: FunctionCallParams):
+    await params.result_callback(
+        {"items": ["medium oat latte", "blueberry muffin"], "item_count": 2}
+    )
+
+
+async def submit_order(params: FunctionCallParams):
+    name = params.arguments.get("customer_name", "friend")
+    await params.result_callback({"success": True, "order_number": 47, "name": name})
+
 
 transport_params = {
     "daily": lambda: DailyParams(
@@ -62,41 +87,105 @@ async def run_bot(transport: BaseTransport):
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Reading Lady
+        voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02",
     )
 
     llm = OpenAILLMService(
-        api_key=os.getenv("OPENAI_API_KEY"), params=OpenAILLMService.InputParams(temperature=0.5),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        params=OpenAILLMService.InputParams(temperature=0.5),
     )
 
-    llm.register_function("get_current_weather", fetch_weather_from_api)
+    llm.register_function("add_item_to_order", add_item_to_order)
+    llm.register_function("remove_item_from_order", remove_item_from_order)
+    llm.register_function("get_order_summary", get_order_summary)
+    llm.register_function("submit_order", submit_order)
 
     @llm.event_handler("on_function_calls_started")
     async def on_function_calls_started(service, function_calls):
-        await tts.queue_frame(TTSSpeakFrame("Let me check on that."))
+        await tts.queue_frame(TTSSpeakFrame("One sec."))
 
-    weather_function = FunctionSchema(
-        name="get_current_weather",
-        description="Get the current weather",
+    add_item_schema = FunctionSchema(
+        name="add_item_to_order",
+        description="Add an item to the customer's order",
         properties={
-            "location": {
+            "item": {
                 "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA",
+                "description": "The item being ordered (e.g., latte, cappuccino, blueberry muffin)",
             },
-            "format": {
+            "size": {
                 "type": "string",
-                "enum": ["celsius", "fahrenheit"],
-                "description": "The temperature unit to use. Infer this from the user's location.",
+                "enum": ["small", "medium", "large"],
+                "description": "Size of the drink if applicable",
+            },
+            "modifications": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Modifications like 'oat milk', 'extra shot', 'no foam'",
             },
         },
-        required=["location", "format"],
+        required=["item"],
     )
-    tools = ToolsSchema(standard_tools=[weather_function])
+
+    remove_item_schema = FunctionSchema(
+        name="remove_item_from_order",
+        description="Remove an item from the customer's order",
+        properties={
+            "item": {
+                "type": "string",
+                "description": "The item to remove",
+            },
+        },
+        required=["item"],
+    )
+
+    get_order_summary_schema = FunctionSchema(
+        name="get_order_summary",
+        description="Get a summary of what's currently in the customer's order",
+        properties={},
+        required=[],
+    )
+
+    submit_order_schema = FunctionSchema(
+        name="submit_order",
+        description="Submit the order for preparation. Call this when the customer is done ordering.",
+        properties={
+            "customer_name": {
+                "type": "string",
+                "description": "The customer's name for the order",
+            },
+        },
+        required=["customer_name"],
+    )
+
+    tools = ToolsSchema(
+        standard_tools=[
+            add_item_schema,
+            remove_item_schema,
+            get_order_summary_schema,
+            submit_order_schema,
+        ]
+    )
 
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way.",
+            "content": """You are Sam, a friendly barista at a cozy neighborhood coffee shop. You're warm and welcoming but efficient - you keep conversations moving without being rushed.
+
+Your menu includes:
+- Coffee drinks: espresso, lattes, cappuccinos, americanos, mochas, cold brew, drip coffee
+- Tea: green, black, chai, herbal (hot or iced)
+- Pastries: muffins, croissants, scones, cookies
+- Food: bagels, breakfast sandwiches, turkey or veggie sandwiches
+
+Behavior:
+- Greet customers warmly and ask what they'd like
+- Use the order tools to manage their order - don't just pretend
+- Ask clarifying questions when needed (size, hot/iced, milk preference)
+- Only suggest options or describe items when the customer asks - no unsolicited upselling
+- Keep responses short and natural since this is a voice conversation
+- When the customer is done, ask for their name and submit the order
+
+Your output will be converted to audio so don't include special characters. Be conversational and brief.""",
         },
     ]
 
