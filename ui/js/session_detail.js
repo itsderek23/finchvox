@@ -925,6 +925,12 @@ function sessionDetailApp() {
             return this.getToolCalls(span).length > 0;
         },
 
+        getToolCallNames(span) {
+            const toolCalls = this.getToolCalls(span);
+            if (toolCalls.length === 0) return '';
+            return toolCalls.map(tc => tc.function?.name || 'unknown').join(', ');
+        },
+
         // Format tool calls as JSON
         formatToolCalls(span) {
             const toolCalls = this.getToolCalls(span);
