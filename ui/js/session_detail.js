@@ -285,28 +285,29 @@ function sessionDetailApp() {
                 .sort((a, b) => a.startMs - b.startMs);
         },
 
-        hasOverlappingLabels(spanType) {
-            const spans = this.getSpansByType(spanType);
-            if (spans.length < 2) return false;
-
+        shouldHideLabel(span) {
             const totalDuration = this.maxTime - this.minTime;
             if (totalDuration === 0) return false;
 
-            const minWidthForInternalLabel = 2;
-            const labelOverflowBuffer = 2;
+            const spans = this.getSpansByType(span.name);
+            const spanIndex = spans.findIndex(s => s.span_id_hex === span.span_id_hex);
+            if (spanIndex === -1) return false;
 
-            for (let i = 0; i < spans.length - 1; i++) {
-                const current = spans[i];
-                const next = spans[i + 1];
+            const minWidthForInternalLabel = 4;
+            const labelOverflowBuffer = 4;
 
-                const currentWidthPercent = (current.durationMs / totalDuration) * 100;
-                const currentEndPercent = ((current.endMs - this.minTime) / totalDuration) * 100;
+            const widthPercent = (span.durationMs / totalDuration) * 100;
+            const labelOverflows = widthPercent < minWidthForInternalLabel;
+
+            if (!labelOverflows) return false;
+
+            if (spanIndex < spans.length - 1) {
+                const next = spans[spanIndex + 1];
+                const endPercent = ((span.endMs - this.minTime) / totalDuration) * 100;
                 const nextStartPercent = ((next.startMs - this.minTime) / totalDuration) * 100;
-                const gap = nextStartPercent - currentEndPercent;
+                const gap = nextStartPercent - endPercent;
 
-                const currentLabelOverflows = currentWidthPercent < minWidthForInternalLabel;
-
-                if (currentLabelOverflows && gap < labelOverflowBuffer) {
+                if (gap < labelOverflowBuffer) {
                     return true;
                 }
             }

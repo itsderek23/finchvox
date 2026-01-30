@@ -189,7 +189,7 @@
                                      @click="selectSpan(span, true)"
                                      @mouseenter="highlightSpan(span)"
                                      @mouseleave="unhighlightSpan()">
-                                    <span x-show="!hasOverlappingLabels(spanType)" class="text-white/85 text-[10px] font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
+                                    <span x-show="!shouldHideLabel(span)" class="text-white/85 text-[10px] font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
                                 </div>
                             </template>
                         </div>
