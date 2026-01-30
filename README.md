@@ -2,7 +2,9 @@
 
 Meet Finchvox, local session replay purpose-built for Voice AI apps.
 
-Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Finchvox is currently designed for local, development usage. Visit [Finchvox.dev](https://finchvox.dev) to signup for our production-ready hosted and self-hosted options.
+Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Finchvox is currently designed for local, development usage.
+
+Visit [Finchvox.dev](https://finchvox.dev) to signup for our production-ready hosted and self-hosted options.
 
 _👇 Click the image for a short video:_
 <a href="https://github.com/user-attachments/assets/f093e764-82ae-41cb-9089-4e2d19c7867f" target="_blank"><img src="./docs/screenshot.png" /></a>
