@@ -264,6 +264,10 @@ function logsViewMixin() {
             if (this.hoverMarker.source === 'logs') {
                 this.hoverMarker.visible = false;
             }
+        },
+
+        logHasSpan() {
+            return this.selectedLog?.span_id_hex && this.selectedLog.span_id_hex.length > 0;
         }
     };
 }

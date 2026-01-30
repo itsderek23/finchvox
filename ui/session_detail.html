@@ -507,7 +507,18 @@
            x-transition:leave-end="translate-x-full">
             <div class="flex justify-between items-center py-2 px-8 border-b border-white/10 sticky top-0 z-10 bg-[#050507]">
                 <h3 class="text-sm font-semibold tracking-wide">Inspect log</h3>
-                <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
+                <div class="flex items-center gap-1">
+                    <button x-show="logHasSpan()"
+                            @click="jumpToSpanFromLog()"
+                            class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer"
+                            title="View in Trace">
+                        <span>Trace</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
+                        </svg>
+                    </button>
+                    <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
+                </div>
             </div>
             <div class="p-8" x-show="selectedLog">
                 <div class="grid gap-4 mb-8">
@@ -532,7 +543,7 @@
                 <!-- Message -->
                 <div class="mb-6">
                     <label class="text-white/40 font-semibold text-xs mb-2 block">Message</label>
-                    <div class="text-white text-sm bg-[#0a0a0c] p-3 rounded border border-white/10 whitespace-pre-wrap break-words font-mono" x-text="getLogBody(selectedLog)"></div>
+                    <div class="text-emerald-500 text-[13px] bg-[#050507] p-2 border border-white/10 whitespace-pre-wrap break-words font-mono" x-text="getLogBody(selectedLog)"></div>
                 </div>
 
                 <!-- Raw JSON -->
