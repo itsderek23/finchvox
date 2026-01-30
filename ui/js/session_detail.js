@@ -15,6 +15,10 @@ const ICONS = {
     tool: {
         viewBox: '0 0 24 24',
         path: 'M12 6.75a5.25 5.25 0 0 1 6.775-5.025.75.75 0 0 1 .313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.64l3.318-3.319a.75.75 0 0 1 1.248.313 5.25 5.25 0 0 1-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 1 1 2.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0 1 12 6.75ZM4.117 19.125a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75v-.008Z'
+    },
+    link: {
+        viewBox: '0 0 24 24',
+        path: 'M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25'
     }
 };
 
@@ -107,6 +111,12 @@ function sessionDetailApp() {
             this.initAudioPlayer();
             this.initKeyboardShortcuts();
             this.initCleanup();
+
+            const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            const spanId = hashParams.get('span');
+            if (spanId && this.selectedView === 'trace') {
+                this.selectSpanById(spanId);
+            }
         },
 
         enrichSpan(span) {
@@ -671,11 +681,16 @@ function sessionDetailApp() {
                     this.refreshMarkerPosition();
                 }, 350); // Wait for CSS transition (0.3s) + small buffer
             }
+
+            if (span && this.selectedView === 'trace') {
+                this.updateUrlWithSpan(span);
+            }
         },
 
         closePanel() {
             this.isPanelOpen = false;  // Triggers close transition
             this.selectedSpan = null;  // Clear panel content
+            this.clearSpanFromUrl();
             // Refresh marker position after panel closes
             setTimeout(() => {
                 this.refreshMarkerPosition();
@@ -1204,6 +1219,47 @@ function sessionDetailApp() {
                     this.stopPolling();
                 }
             }
+        },
+
+        expandToSpan(span) {
+            let currentSpanId = span.parent_span_id_hex;
+            while (currentSpanId) {
+                const parent = this.spans.find(s => s.span_id_hex === currentSpanId);
+                if (!parent) break;
+                this.expandedSpanIds.add(parent.span_id_hex);
+                currentSpanId = parent.parent_span_id_hex;
+            }
+            this.buildWaterfallTree();
+        },
+
+        selectSpanById(spanId) {
+            const span = this.spans.find(s => s.span_id_hex === spanId);
+            if (!span) return;
+            this.expandToSpan(span);
+            this.selectSpan(span, true);
+        },
+
+        updateUrlWithSpan(span) {
+            const baseHash = this.selectedView;
+            const newHash = span ? `${baseHash}?span=${span.span_id_hex}` : baseHash;
+            history.replaceState(null, '', `#${newHash}`);
+        },
+
+        clearSpanFromUrl() {
+            history.replaceState(null, '', `#${this.selectedView}`);
+        },
+
+        jumpToSpanFromLog() {
+            if (!this.selectedLog?.span_id_hex) return;
+
+            const span = this.spans.find(s => s.span_id_hex === this.selectedLog.span_id_hex);
+            if (!span) return;
+
+            this.closeLogPanel();
+            this.expandToSpan(span);
+            this.selectedView = 'trace';
+            this.selectSpan(span, true);
+            this.updateUrlWithSpan(span);
         }
     };
 }
