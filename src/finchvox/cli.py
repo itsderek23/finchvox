@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from finchvox.server import UnifiedServer
 from finchvox.collector.config import GRPC_PORT
+from finchvox import telemetry
 
 
 def get_version() -> str:
@@ -47,6 +48,8 @@ def cmd_start(args):
     print(f"  - Collector: http://{args.host}:{args.port}/collector")
     print(f"gRPC Server:  {args.host}:{args.grpc_port}")
     print(f"Data Directory: {data_dir}")
+    if not telemetry.is_enabled():
+        print("Telemetry: Disabled")
     print("=" * 50)
 
     server = UnifiedServer(
