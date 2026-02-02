@@ -2,6 +2,7 @@ import io
 import json
 import tempfile
 import zipfile
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
@@ -29,34 +30,37 @@ def client(app_with_temp_dir):
     return TestClient(app_with_temp_dir)
 
 
-def create_session_files(data_dir: Path, session_id: str, spans: list, logs: list = None, exceptions: list = None, audio_files: list = None):
+@dataclass
+class SessionContent:
+    spans: list
+    logs: list = field(default_factory=list)
+    exceptions: list = field(default_factory=list)
+    audio_files: list = field(default_factory=list)
+
+
+def _write_jsonl(path: Path, records: list):
+    with path.open("w") as f:
+        for record in records:
+            json.dump(record, f)
+            f.write("\n")
+
+
+def create_session_files(data_dir: Path, session_id: str, content: SessionContent):
     session_dir = data_dir / "sessions" / session_id
     session_dir.mkdir(parents=True, exist_ok=True)
 
-    trace_file = session_dir / f"trace_{session_id}.jsonl"
-    with trace_file.open("w") as f:
-        for span in spans:
-            json.dump(span, f)
-            f.write("\n")
+    _write_jsonl(session_dir / f"trace_{session_id}.jsonl", content.spans)
 
-    if logs:
-        log_file = session_dir / f"logs_{session_id}.jsonl"
-        with log_file.open("w") as f:
-            for log in logs:
-                json.dump(log, f)
-                f.write("\n")
+    if content.logs:
+        _write_jsonl(session_dir / f"logs_{session_id}.jsonl", content.logs)
 
-    if exceptions:
-        exception_file = session_dir / f"exceptions_{session_id}.jsonl"
-        with exception_file.open("w") as f:
-            for exc in exceptions:
-                json.dump(exc, f)
-                f.write("\n")
+    if content.exceptions:
+        _write_jsonl(session_dir / f"exceptions_{session_id}.jsonl", content.exceptions)
 
-    if audio_files:
+    if content.audio_files:
         audio_dir = session_dir / "audio"
         audio_dir.mkdir(exist_ok=True)
-        for audio_filename, audio_content in audio_files:
+        for audio_filename, audio_content in content.audio_files:
             (audio_dir / audio_filename).write_bytes(audio_content)
 
 
@@ -74,12 +78,28 @@ def create_valid_zip(session_id: str, spans: list, logs: list = None) -> bytes:
     return zip_buffer.read()
 
 
+def upload_zip(client, zip_buffer: io.BytesIO):
+    zip_buffer.seek(0)
+    return client.post(
+        "/api/sessions/upload",
+        files={"file": ("test.zip", zip_buffer, "application/zip")}
+    )
+
+
+def download_and_get_zip_files(client, session_id: str) -> list[str]:
+    response = client.get(f"/api/sessions/{session_id}/download")
+    assert response.status_code == 200
+    zip_buffer = io.BytesIO(response.content)
+    with zipfile.ZipFile(zip_buffer, 'r') as zf:
+        return zf.namelist()
+
+
 class TestSessionDownload:
 
     def test_download_returns_valid_zip_with_trace(self, client, temp_data_dir):
         session_id = "download123"
         spans = [{"name": "test-span", "start_time_unix_nano": 1000000000}]
-        create_session_files(temp_data_dir, session_id, spans)
+        create_session_files(temp_data_dir, session_id, SessionContent(spans=spans))
 
         response = client.get(f"/api/sessions/{session_id}/download")
 
@@ -96,30 +116,22 @@ class TestSessionDownload:
         session_id = "download_logs"
         spans = [{"name": "test-span", "start_time_unix_nano": 1000000000}]
         logs = [{"time_unix_nano": 1500000000, "severity_text": "INFO", "body": "Test log"}]
-        create_session_files(temp_data_dir, session_id, spans, logs=logs)
+        create_session_files(temp_data_dir, session_id, SessionContent(spans=spans, logs=logs))
 
-        response = client.get(f"/api/sessions/{session_id}/download")
+        file_list = download_and_get_zip_files(client, session_id)
 
-        assert response.status_code == 200
-        zip_buffer = io.BytesIO(response.content)
-        with zipfile.ZipFile(zip_buffer, 'r') as zf:
-            file_list = zf.namelist()
-            assert f"{session_id}/trace_{session_id}.jsonl" in file_list
-            assert f"{session_id}/logs_{session_id}.jsonl" in file_list
+        assert f"{session_id}/trace_{session_id}.jsonl" in file_list
+        assert f"{session_id}/logs_{session_id}.jsonl" in file_list
 
     def test_download_includes_audio_files(self, client, temp_data_dir):
         session_id = "download_audio"
         spans = [{"name": "test-span", "start_time_unix_nano": 1000000000}]
         audio_files = [("chunk_001.wav", b"fake audio data")]
-        create_session_files(temp_data_dir, session_id, spans, audio_files=audio_files)
+        create_session_files(temp_data_dir, session_id, SessionContent(spans=spans, audio_files=audio_files))
 
-        response = client.get(f"/api/sessions/{session_id}/download")
+        file_list = download_and_get_zip_files(client, session_id)
 
-        assert response.status_code == 200
-        zip_buffer = io.BytesIO(response.content)
-        with zipfile.ZipFile(zip_buffer, 'r') as zf:
-            file_list = zf.namelist()
-            assert f"{session_id}/audio/chunk_001.wav" in file_list
+        assert f"{session_id}/audio/chunk_001.wav" in file_list
 
     def test_download_returns_404_for_nonexistent_session(self, client):
         response = client.get("/api/sessions/nonexistent_session/download")
@@ -166,12 +178,7 @@ class TestSessionUpload:
         with zipfile.ZipFile(zip_buffer, 'w') as zf:
             zf.writestr("session123/readme.txt", "No JSONL files here")
 
-        zip_buffer.seek(0)
-
-        response = client.post(
-            "/api/sessions/upload",
-            files={"file": ("test.zip", zip_buffer, "application/zip")}
-        )
+        response = upload_zip(client, zip_buffer)
 
         assert response.status_code == 400
         assert "jsonl" in response.json()["detail"].lower()
@@ -181,12 +188,7 @@ class TestSessionUpload:
         with zipfile.ZipFile(zip_buffer, 'w') as zf:
             zf.writestr("session123/trace_session123.jsonl", "not valid json\n{bad json}")
 
-        zip_buffer.seek(0)
-
-        response = client.post(
-            "/api/sessions/upload",
-            files={"file": ("test.zip", zip_buffer, "application/zip")}
-        )
+        response = upload_zip(client, zip_buffer)
 
         assert response.status_code == 400
         assert "invalid json" in response.json()["detail"].lower()
@@ -194,7 +196,7 @@ class TestSessionUpload:
     def test_upload_overwrites_existing_session(self, client, temp_data_dir):
         session_id = "existing_session"
         original_spans = [{"name": "original-span", "version": 1}]
-        create_session_files(temp_data_dir, session_id, original_spans)
+        create_session_files(temp_data_dir, session_id, SessionContent(spans=original_spans))
 
         new_spans = [{"name": "new-span", "version": 2}]
         zip_content = create_valid_zip(session_id, new_spans)
@@ -218,7 +220,7 @@ class TestDownloadUploadRoundTrip:
         session_id = "roundtrip_session"
         spans = [{"name": "test-span", "start_time_unix_nano": 1000000000, "end_time_unix_nano": 2000000000}]
         logs = [{"time_unix_nano": 1500000000, "severity_text": "INFO", "body": "Test message"}]
-        create_session_files(temp_data_dir, session_id, spans, logs=logs)
+        create_session_files(temp_data_dir, session_id, SessionContent(spans=spans, logs=logs))
 
         download_response = client.get(f"/api/sessions/{session_id}/download")
         assert download_response.status_code == 200
