@@ -5,6 +5,10 @@ All notable changes to **Finchvox** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.10] - 2026-2-2
+
+- Add session download and upload for sharing sessions between machines.
+
 ## [0.0.9] - 2026-1-30
 
 - Add error visibility improvements: error icons on spans with exceptions and ability to jump from log entries to their associated span.
