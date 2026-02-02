@@ -229,24 +229,30 @@ class Session:
         return _read_jsonl_file(self.exceptions_file)
 
     @staticmethod
+    def _validate_jsonl_file(zf: zipfile.ZipFile, jsonl_file: str) -> str | None:
+        with zf.open(jsonl_file) as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.decode('utf-8').strip()
+                if not line:
+                    continue
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError:
+                    return f"Invalid JSON on line {line_num} of {jsonl_file}"
+        return None
+
+    @staticmethod
     def validate_zip(zip_bytes: bytes) -> tuple[bool, str | None]:
         try:
             with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
-                file_list = zf.namelist()
-
-                jsonl_files = [f for f in file_list if f.endswith('.jsonl')]
+                jsonl_files = [f for f in zf.namelist() if f.endswith('.jsonl')]
                 if not jsonl_files:
                     return False, "Zip must contain at least one .jsonl file"
 
                 for jsonl_file in jsonl_files:
-                    with zf.open(jsonl_file) as f:
-                        for line_num, line in enumerate(f, 1):
-                            line = line.decode('utf-8').strip()
-                            if line:
-                                try:
-                                    json.loads(line)
-                                except json.JSONDecodeError:
-                                    return False, f"Invalid JSON on line {line_num} of {jsonl_file}"
+                    error = Session._validate_jsonl_file(zf, jsonl_file)
+                    if error:
+                        return False, error
 
                 return True, None
         except zipfile.BadZipFile:
