@@ -1,4 +1,6 @@
+import io
 import json
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -158,3 +160,25 @@ class Session:
             "trace": self.trace.to_dict(),
             "log_count": self.log_count,
         }
+
+    def to_zip(self) -> io.BytesIO:
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            if self.trace_file.exists():
+                zf.write(self.trace_file, f"{self.session_id}/trace_{self.session_id}.jsonl")
+
+            logs_file = self.session_dir / f"logs_{self.session_id}.jsonl"
+            if logs_file.exists():
+                zf.write(logs_file, f"{self.session_id}/logs_{self.session_id}.jsonl")
+
+            exceptions_file = self.session_dir / f"exceptions_{self.session_id}.jsonl"
+            if exceptions_file.exists():
+                zf.write(exceptions_file, f"{self.session_id}/exceptions_{self.session_id}.jsonl")
+
+            sessions_base_dir = self.session_dir.parent
+            chunks = find_chunks(sessions_base_dir, self.session_id)
+            for _, chunk_path in chunks:
+                zf.write(chunk_path, f"{self.session_id}/audio/{chunk_path.name}")
+
+        zip_buffer.seek(0)
+        return zip_buffer

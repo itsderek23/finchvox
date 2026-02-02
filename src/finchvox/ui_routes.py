@@ -230,33 +230,6 @@ async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> J
     return JSONResponse({"chunk_count": len(chunks), "last_modified": last_modified})
 
 
-def _create_session_zip(data_dir: Path, session_id: str) -> io.BytesIO:
-    session_dir = get_session_dir(data_dir, session_id)
-    if not session_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        trace_file = session_dir / f"trace_{session_id}.jsonl"
-        if trace_file.exists():
-            zf.write(trace_file, f"{session_id}/trace_{session_id}.jsonl")
-
-        logs_file = session_dir / f"logs_{session_id}.jsonl"
-        if logs_file.exists():
-            zf.write(logs_file, f"{session_id}/logs_{session_id}.jsonl")
-
-        exceptions_file = session_dir / f"exceptions_{session_id}.jsonl"
-        if exceptions_file.exists():
-            zf.write(exceptions_file, f"{session_id}/exceptions_{session_id}.jsonl")
-
-        audio_dir = get_session_audio_dir(data_dir, session_id)
-        if audio_dir.exists():
-            for audio_file in audio_dir.iterdir():
-                if audio_file.is_file():
-                    zf.write(audio_file, f"{session_id}/audio/{audio_file.name}")
-
-    zip_buffer.seek(0)
-    return zip_buffer
 
 
 def _validate_session_zip(zip_bytes: bytes) -> tuple[bool, str | None]:
@@ -386,7 +359,11 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/download")
     async def download_session(session_id: str):
-        zip_buffer = _create_session_zip(data_dir, session_id)
+        session_dir = get_session_dir(data_dir, session_id)
+        if not session_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        session = Session(session_dir)
+        zip_buffer = session.to_zip()
         return StreamingResponse(
             zip_buffer,
             media_type="application/zip",
