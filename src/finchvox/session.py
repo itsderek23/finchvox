@@ -1,8 +1,20 @@
+import io
 import json
+import shutil
+import zipfile
 from pathlib import Path
 from typing import Optional
 
 from finchvox.audio_utils import find_chunks
+
+
+def _read_jsonl_file(file_path: Path) -> list[dict]:
+    records = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            if line.strip():
+                records.append(json.loads(line))
+    return records
 
 
 class Trace:
@@ -158,3 +170,123 @@ class Session:
             "trace": self.trace.to_dict(),
             "log_count": self.log_count,
         }
+
+    def to_zip(self) -> io.BytesIO:
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            if self.trace_file.exists():
+                zf.write(self.trace_file, f"{self.session_id}/trace_{self.session_id}.jsonl")
+
+            logs_file = self.session_dir / f"logs_{self.session_id}.jsonl"
+            if logs_file.exists():
+                zf.write(logs_file, f"{self.session_id}/logs_{self.session_id}.jsonl")
+
+            exceptions_file = self.session_dir / f"exceptions_{self.session_id}.jsonl"
+            if exceptions_file.exists():
+                zf.write(exceptions_file, f"{self.session_id}/exceptions_{self.session_id}.jsonl")
+
+            sessions_base_dir = self.session_dir.parent
+            chunks = find_chunks(sessions_base_dir, self.session_id)
+            for _, chunk_path in chunks:
+                zf.write(chunk_path, f"{self.session_id}/audio/{chunk_path.name}")
+
+        zip_buffer.seek(0)
+        return zip_buffer
+
+    @property
+    def start_time_nano(self) -> Optional[int]:
+        return self._min_start_nano
+
+    @property
+    def logs_file(self) -> Path:
+        return self.session_dir / f"logs_{self.session_id}.jsonl"
+
+    @property
+    def exceptions_file(self) -> Path:
+        return self.session_dir / f"exceptions_{self.session_id}.jsonl"
+
+    def get_spans(self) -> list[dict]:
+        if not self.trace_file.exists():
+            return []
+        return _read_jsonl_file(self.trace_file)
+
+    def get_logs(self) -> list[dict]:
+        if not self.logs_file.exists():
+            return []
+        logs = []
+        with open(self.logs_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        logs.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+        return logs
+
+    def get_exceptions(self) -> list[dict]:
+        if not self.exceptions_file.exists():
+            return []
+        return _read_jsonl_file(self.exceptions_file)
+
+    @staticmethod
+    def _validate_jsonl_file(zf: zipfile.ZipFile, jsonl_file: str) -> str | None:
+        with zf.open(jsonl_file) as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.decode('utf-8').strip()
+                if not line:
+                    continue
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError:
+                    return f"Invalid JSON on line {line_num} of {jsonl_file}"
+        return None
+
+    @staticmethod
+    def validate_zip(zip_bytes: bytes) -> tuple[bool, str | None]:
+        try:
+            with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+                jsonl_files = [f for f in zf.namelist() if f.endswith('.jsonl')]
+                if not jsonl_files:
+                    return False, "Zip must contain at least one .jsonl file"
+
+                for jsonl_file in jsonl_files:
+                    error = Session._validate_jsonl_file(zf, jsonl_file)
+                    if error:
+                        return False, error
+
+                return True, None
+        except zipfile.BadZipFile:
+            return False, "Invalid zip file"
+
+    @staticmethod
+    def extract_id_from_zip(zip_bytes: bytes) -> str | None:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+            file_list = zf.namelist()
+            if not file_list:
+                return None
+
+            first_path = file_list[0]
+            parts = first_path.split('/')
+            if parts and parts[0]:
+                return parts[0]
+
+        return None
+
+    @staticmethod
+    def from_zip(zip_bytes: bytes, sessions_base_dir: Path) -> tuple[Optional['Session'], str | None]:
+        is_valid, error_msg = Session.validate_zip(zip_bytes)
+        if not is_valid:
+            return None, error_msg
+
+        session_id = Session.extract_id_from_zip(zip_bytes)
+        if not session_id:
+            return None, "Could not determine session ID from zip structure"
+
+        session_dir = sessions_base_dir / session_id
+        if session_dir.exists():
+            shutil.rmtree(session_dir)
+
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+            zf.extractall(sessions_base_dir)
+
+        return Session(session_dir), None

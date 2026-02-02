@@ -1,9 +1,8 @@
-import json
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -15,8 +14,7 @@ from finchvox.collector.config import (
     get_sessions_base_dir,
     get_session_dir,
     get_session_audio_dir,
-    get_session_exceptions_dir,
-    get_default_data_dir
+    get_default_data_dir,
 )
 from finchvox import telemetry
 
@@ -25,22 +23,6 @@ UI_DIR = Path(__file__).parent / "ui"
 if not UI_DIR.exists():
     PROJECT_ROOT = Path(__file__).parent.parent.parent
     UI_DIR = PROJECT_ROOT / "ui"
-
-
-def _read_jsonl_file(file_path: Path) -> list[dict]:
-    records = []
-    with open(file_path, 'r') as f:
-        for line in f:
-            if line.strip():
-                records.append(json.loads(line))
-    return records
-
-
-def _get_trace_start_time(trace_file: Path) -> int | None:
-    spans = _read_jsonl_file(trace_file)
-    if not spans:
-        return None
-    return min(s.get("start_time_unix_nano", float("inf")) for s in spans)
 
 
 def _get_combined_audio_file(
@@ -95,13 +77,20 @@ async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
     return JSONResponse({"sessions": sessions, "data_dir": str(sessions_base_dir)})
 
 
-def _get_session_spans(data_dir: Path, session_id: str) -> list[dict]:
+def _get_session(data_dir: Path, session_id: str) -> Session:
     session_dir = get_session_dir(data_dir, session_id)
+    if not session_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
     trace_file = session_dir / f"trace_{session_id}.jsonl"
     if not trace_file.exists():
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    return Session(session_dir)
+
+
+def _get_session_spans(data_dir: Path, session_id: str) -> list[dict]:
+    session = _get_session(data_dir, session_id)
     try:
-        return _read_jsonl_file(trace_file)
+        return session.get_spans()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading trace: {str(e)}")
 
@@ -116,19 +105,8 @@ async def _handle_get_session_trace(data_dir: Path, session_id: str) -> JSONResp
 
 
 def _get_session_logs_raw(data_dir: Path, session_id: str) -> list[dict]:
-    session_dir = get_session_dir(data_dir, session_id)
-    log_file = session_dir / f"logs_{session_id}.jsonl"
-    if not log_file.exists():
-        return []
-    logs = []
-    with open(log_file, 'r') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    logs.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    return logs
+    session = _get_session(data_dir, session_id)
+    return session.get_logs()
 
 
 async def _handle_get_session_raw(data_dir: Path, session_id: str) -> JSONResponse:
@@ -141,41 +119,11 @@ async def _handle_get_session_raw(data_dir: Path, session_id: str) -> JSONRespon
     )
 
 
-async def _handle_get_jsonl_records(
-    file_path: Path,
-    response_key: str
-) -> JSONResponse:
-    if not file_path.exists():
-        return JSONResponse({response_key: []})
-
-    try:
-        records = _read_jsonl_file(file_path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading {response_key}: {str(e)}")
-
-    return JSONResponse({response_key: records})
-
-
 async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) -> JSONResponse:
-    session_dir = get_session_dir(data_dir, session_id)
-    trace_file = session_dir / f"trace_{session_id}.jsonl"
-
-    if not trace_file.exists():
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    log_file = session_dir / f"logs_{session_id}.jsonl"
-    trace_start_time = _get_trace_start_time(trace_file)
-
-    if not log_file.exists():
-        return JSONResponse({
-            "logs": [],
-            "total_count": 0,
-            "limit": limit,
-            "trace_start_time": trace_start_time
-        })
+    session = _get_session(data_dir, session_id)
 
     try:
-        logs = _read_jsonl_file(log_file)
+        logs = session.get_logs()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
 
@@ -186,7 +134,7 @@ async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) 
         "logs": logs[:limit],
         "total_count": total_count,
         "limit": limit,
-        "trace_start_time": trace_start_time
+        "trace_start_time": session.start_time_nano
     })
 
 
@@ -225,6 +173,21 @@ async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> J
         last_modified = max(Path(c).stat().st_mtime for c in chunks)
 
     return JSONResponse({"chunk_count": len(chunks), "last_modified": last_modified})
+
+
+
+
+async def _handle_upload_session(
+    sessions_base_dir: Path,
+    file: UploadFile
+) -> JSONResponse:
+    zip_bytes = await file.read()
+
+    session, error_msg = Session.from_zip(zip_bytes, sessions_base_dir)
+    if error_msg:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    return JSONResponse({"success": True, "session_id": session.session_id})
 
 
 def register_ui_routes(app: FastAPI, data_dir: Path = None):
@@ -273,16 +236,12 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/exceptions")
     async def get_session_exceptions(session_id: str) -> JSONResponse:
-        exceptions_file = get_session_exceptions_dir(data_dir, session_id) / f"exceptions_{session_id}.jsonl"
-        return await _handle_get_jsonl_records(exceptions_file, "exceptions")
+        session = _get_session(data_dir, session_id)
+        return JSONResponse({"exceptions": session.get_exceptions()})
 
     @app.get("/api/sessions/{session_id}/audio")
     async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
         return await _handle_get_session_audio(data_dir, session_id, background_tasks)
-
-    @app.get("/api/sessions/{session_id}/audio/download")
-    async def download_session_audio(session_id: str, background_tasks: BackgroundTasks):
-        return await _handle_get_session_audio(data_dir, session_id, background_tasks, as_download=True)
 
     @app.get("/api/sessions/{session_id}/audio/status")
     async def get_session_audio_status(session_id: str) -> JSONResponse:
@@ -293,3 +252,19 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
         spans = _get_session_spans(data_dir, session_id)
         metrics = Metrics(spans)
         return JSONResponse(metrics.to_dict())
+
+    @app.get("/api/sessions/{session_id}/download")
+    async def download_session(session_id: str):
+        session = _get_session(data_dir, session_id)
+        zip_buffer = session.to_zip()
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename=finchvox_session_{session_id}.zip"
+            }
+        )
+
+    @app.post("/api/sessions/upload")
+    async def upload_session(file: UploadFile = File(...)):
+        return await _handle_upload_session(sessions_base_dir, file)
