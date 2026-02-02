@@ -1,9 +1,12 @@
+import io
 import json
+import shutil
 import tempfile
+import zipfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -227,6 +230,97 @@ async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> J
     return JSONResponse({"chunk_count": len(chunks), "last_modified": last_modified})
 
 
+def _create_session_zip(data_dir: Path, session_id: str) -> io.BytesIO:
+    session_dir = get_session_dir(data_dir, session_id)
+    if not session_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        if trace_file.exists():
+            zf.write(trace_file, f"{session_id}/trace_{session_id}.jsonl")
+
+        logs_file = session_dir / f"logs_{session_id}.jsonl"
+        if logs_file.exists():
+            zf.write(logs_file, f"{session_id}/logs_{session_id}.jsonl")
+
+        exceptions_file = session_dir / f"exceptions_{session_id}.jsonl"
+        if exceptions_file.exists():
+            zf.write(exceptions_file, f"{session_id}/exceptions_{session_id}.jsonl")
+
+        audio_dir = get_session_audio_dir(data_dir, session_id)
+        if audio_dir.exists():
+            for audio_file in audio_dir.iterdir():
+                if audio_file.is_file():
+                    zf.write(audio_file, f"{session_id}/audio/{audio_file.name}")
+
+    zip_buffer.seek(0)
+    return zip_buffer
+
+
+def _validate_session_zip(zip_bytes: bytes) -> tuple[bool, str | None]:
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+            file_list = zf.namelist()
+
+            jsonl_files = [f for f in file_list if f.endswith('.jsonl')]
+            if not jsonl_files:
+                return False, "Zip must contain at least one .jsonl file"
+
+            for jsonl_file in jsonl_files:
+                with zf.open(jsonl_file) as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.decode('utf-8').strip()
+                        if line:
+                            try:
+                                json.loads(line)
+                            except json.JSONDecodeError:
+                                return False, f"Invalid JSON on line {line_num} of {jsonl_file}"
+
+            return True, None
+    except zipfile.BadZipFile:
+        return False, "Invalid zip file"
+
+
+def _extract_session_id_from_zip(zip_bytes: bytes) -> str | None:
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+        file_list = zf.namelist()
+        if not file_list:
+            return None
+
+        first_path = file_list[0]
+        parts = first_path.split('/')
+        if parts and parts[0]:
+            return parts[0]
+
+    return None
+
+
+async def _handle_upload_session(
+    sessions_base_dir: Path,
+    file: UploadFile
+) -> JSONResponse:
+    zip_bytes = await file.read()
+
+    is_valid, error_msg = _validate_session_zip(zip_bytes)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    session_id = _extract_session_id_from_zip(zip_bytes)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Could not determine session ID from zip structure")
+
+    session_dir = sessions_base_dir / session_id
+    if session_dir.exists():
+        shutil.rmtree(session_dir)
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+        zf.extractall(sessions_base_dir)
+
+    return JSONResponse({"success": True, "session_id": session_id})
+
+
 def register_ui_routes(app: FastAPI, data_dir: Path = None):
     if data_dir is None:
         data_dir = get_default_data_dir()
@@ -280,10 +374,6 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
         return await _handle_get_session_audio(data_dir, session_id, background_tasks)
 
-    @app.get("/api/sessions/{session_id}/audio/download")
-    async def download_session_audio(session_id: str, background_tasks: BackgroundTasks):
-        return await _handle_get_session_audio(data_dir, session_id, background_tasks, as_download=True)
-
     @app.get("/api/sessions/{session_id}/audio/status")
     async def get_session_audio_status(session_id: str) -> JSONResponse:
         return await _handle_get_session_audio_status(data_dir, session_id)
@@ -293,3 +383,18 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
         spans = _get_session_spans(data_dir, session_id)
         metrics = Metrics(spans)
         return JSONResponse(metrics.to_dict())
+
+    @app.get("/api/sessions/{session_id}/download")
+    async def download_session(session_id: str):
+        zip_buffer = _create_session_zip(data_dir, session_id)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename=finchvox_session_{session_id}.zip"
+            }
+        )
+
+    @app.post("/api/sessions/upload")
+    async def upload_session(file: UploadFile = File(...)):
+        return await _handle_upload_session(sessions_base_dir, file)
