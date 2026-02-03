@@ -67,6 +67,9 @@ function sessionDetailApp() {
         // Metrics view mixin (state and methods from metrics_view.js)
         ...metricsViewMixin(),
 
+        // Environment view mixin (state and methods from environment_view.js)
+        ...environmentViewMixin(),
+
         // Timeline state
         minTime: 0,
         maxTime: 0,

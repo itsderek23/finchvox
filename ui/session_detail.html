@@ -144,7 +144,7 @@
             </section>
 
                 <!-- View Tabs -->
-                <div class="flex gap-6 px-8 py-2 bg-[#050507]">
+                <div class="flex gap-6 px-8 py-4 bg-[#050507]">
                     <button @click="switchView('logs')"
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'logs' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
@@ -165,12 +165,17 @@
                             :class="selectedView === 'metrics' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
                         Metrics
                     </button>
+                    <button @click="switchView('environment'); loadEnvironmentIfNeeded()"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'environment' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Environment
+                    </button>
                 </div>
             </div><!-- End fixed-container -->
 
     <!-- Trace View -->
-    <main x-show="selectedView === 'trace'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-362px)]">
+    <main x-show="selectedView === 'trace'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-378px)]">
 
             <!-- Swimlane Body (Scrollable) -->
             <div class="flex-1 overflow-y-auto overflow-x-visible space-y-2">
@@ -201,10 +206,10 @@
     </main>
 
     <!-- Logs View -->
-    <main x-show="selectedView === 'logs'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
+    <main x-show="selectedView === 'logs'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-348px)]">
             <!-- Filter Bar -->
-            <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
+            <div class="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
                 <div class="flex items-center gap-4">
                     <div class="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
@@ -283,8 +288,8 @@
     </main>
 
     <!-- Conversation View -->
-    <main x-show="selectedView === 'conversation'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
+    <main x-show="selectedView === 'conversation'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-348px)]">
             <!-- Loading state -->
             <div x-show="conversationLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading conversation...</span>
@@ -336,8 +341,8 @@
     </main>
 
     <!-- Metrics View -->
-    <main x-show="selectedView === 'metrics'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-auto flex flex-col h-[calc(100vh-332px)] px-8 py-4">
+    <main x-show="selectedView === 'metrics'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-auto flex flex-col h-[calc(100vh-348px)] px-8 py-4">
             <!-- Loading state -->
             <div x-show="metricsLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading metrics...</span>
@@ -379,6 +384,57 @@
                         </div>
                     </div>
                 </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Environment View -->
+    <main x-show="selectedView === 'environment'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-auto flex flex-col h-[calc(100vh-348px)] px-8 py-4">
+            <!-- Loading state -->
+            <div x-show="environmentLoading" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">Loading environment...</span>
+            </div>
+
+            <!-- Error state -->
+            <div x-show="!environmentLoading && environmentError" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40" x-text="environmentError"></span>
+            </div>
+
+            <!-- Content -->
+            <div x-show="!environmentLoading && !environmentError && environmentData" class="space-y-6">
+                <!-- Operating System -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Operating System</h3>
+                    <p class="text-white text-sm font-mono" x-text="formatOS()"></p>
+                </div>
+
+                <!-- Python -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Python</h3>
+                    <p class="text-white text-sm font-mono" x-text="formatPython()"></p>
+                </div>
+
+                <!-- Python Packages -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Python Packages</h3>
+                    <table class="w-full table-fixed">
+                        <thead>
+                            <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
+                                <th class="w-1/2 px-4 py-2 text-left font-semibold">Package</th>
+                                <th class="w-1/2 px-4 py-2 text-left font-semibold">Version</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(version, name) in getSortedPackages()" :key="name">
+                                <tr class="border-b border-white/5">
+                                    <td class="px-4 py-1.5 text-white text-xs font-mono" x-text="name"></td>
+                                    <td class="px-4 py-1.5 text-white/70 text-xs font-mono" x-text="version"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -570,6 +626,7 @@
     <script src="/js/logs_view.js"></script>
     <script src="/js/conversation.js"></script>
     <script src="/js/metrics_view.js"></script>
+    <script src="/js/environment_view.js"></script>
     <script src="/js/session_detail.js"></script>
 </body>
 </html>
