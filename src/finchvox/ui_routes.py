@@ -111,10 +111,17 @@ def _get_session_logs_raw(data_dir: Path, session_id: str) -> list[dict]:
 
 
 async def _handle_get_session_raw(data_dir: Path, session_id: str) -> JSONResponse:
-    spans = _get_session_spans(data_dir, session_id)
-    logs = _get_session_logs_raw(data_dir, session_id)
+    session = _get_session(data_dir, session_id)
+    spans = session.get_spans()
+    logs = session.get_logs()
+
+    content = {"traces": spans, "logs": logs}
+
+    if session.has_environment:
+        content["environment"] = json.loads(session.environment_file.read_text())
+
     return JSONResponse(
-        content={"Traces": spans, "Logs": logs},
+        content=content,
         media_type="application/json",
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
