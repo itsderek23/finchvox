@@ -1,7 +1,12 @@
 import logging
 from importlib.metadata import version
 from pathlib import Path
+
 from loguru import logger
+from opentelemetry import trace as otel_trace
+from opentelemetry.sdk.trace import TracerProvider
+
+from finchvox.environment import EnvironmentSpanProcessor, capture_environment
 
 _initialized = False
 _allowed_log_modules: set[str] = {"pipecat.", "finchvox.", "__main__"}
@@ -52,6 +57,14 @@ def init(
 
     exporter = OTLPSpanExporter(endpoint=endpoint, insecure=insecure)
     setup_tracing(service_name=service_name, exporter=exporter)
+
+    capture_environment()
+
+    provider = otel_trace.get_tracer_provider()
+    if isinstance(provider, TracerProvider):
+        http_endpoint = endpoint.replace(":4317", ":3000")
+        env_processor = EnvironmentSpanProcessor(endpoint=http_endpoint)
+        provider.add_span_processor(env_processor)
 
     if capture_logs:
         _setup_log_capture(service_name, endpoint, insecure)

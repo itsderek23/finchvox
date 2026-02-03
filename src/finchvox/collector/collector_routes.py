@@ -6,14 +6,15 @@ which handle data ingestion from Pipecat applications.
 """
 
 import json
+import re
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import JSONResponse, Response
 from loguru import logger
 
 from .audio_handler import AudioHandler
-from .config import ALLOWED_AUDIO_FORMATS, MAX_AUDIO_FILE_SIZE
+from .config import ALLOWED_AUDIO_FORMATS, MAX_AUDIO_FILE_SIZE, get_session_dir
 
 
 def register_collector_routes(
@@ -184,3 +185,29 @@ def register_collector_routes(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to list audio chunks",
             )
+
+    @app.post(f"{prefix}/environment/{{trace_id}}")
+    async def receive_environment(trace_id: str, request: Request):
+        if not re.match(r"^[a-f0-9]{32}$", trace_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid trace_id format",
+            )
+
+        try:
+            env_data = await request.json()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON",
+            )
+
+        session_dir = get_session_dir(audio_handler.data_dir, trace_id)
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        env_file = session_dir / f"environment_{trace_id}.json"
+        env_file.write_text(json.dumps(env_data, indent=2))
+
+        logger.info(f"Received environment data for trace {trace_id[:8]}...")
+
+        return Response(status_code=status.HTTP_201_CREATED)

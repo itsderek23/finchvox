@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 
@@ -268,3 +269,15 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
     @app.post("/api/sessions/upload")
     async def upload_session(file: UploadFile = File(...)):
         return await _handle_upload_session(sessions_base_dir, file)
+
+    @app.get("/api/sessions/{session_id}/environment")
+    async def get_session_environment(session_id: str):
+        session_dir = get_session_dir(data_dir, session_id)
+        env_file = session_dir / f"environment_{session_id}.json"
+
+        if not env_file.exists():
+            raise HTTPException(
+                status_code=404, detail="Environment data not found"
+            )
+
+        return json.loads(env_file.read_text())

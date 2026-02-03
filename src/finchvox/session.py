@@ -205,6 +205,14 @@ class Session:
     def exceptions_file(self) -> Path:
         return self.session_dir / f"exceptions_{self.session_id}.jsonl"
 
+    @property
+    def environment_file(self) -> Path:
+        return self.session_dir / f"environment_{self.session_id}.json"
+
+    @property
+    def has_environment(self) -> bool:
+        return self.environment_file.exists()
+
     def get_spans(self) -> list[dict]:
         if not self.trace_file.exists():
             return []
