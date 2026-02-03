@@ -198,6 +198,41 @@ async def _handle_upload_session(
     return JSONResponse({"success": True, "session_id": session.session_id})
 
 
+async def _handle_get_session_exceptions(data_dir: Path, session_id: str) -> JSONResponse:
+    session = _get_session(data_dir, session_id)
+    return JSONResponse({"exceptions": session.get_exceptions()})
+
+
+async def _handle_get_session_metrics(data_dir: Path, session_id: str) -> JSONResponse:
+    spans = _get_session_spans(data_dir, session_id)
+    metrics = Metrics(spans)
+    return JSONResponse(metrics.to_dict())
+
+
+async def _handle_download_session(data_dir: Path, session_id: str) -> StreamingResponse:
+    session = _get_session(data_dir, session_id)
+    zip_buffer = session.to_zip()
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=finchvox_session_{session_id}.zip"
+        }
+    )
+
+
+async def _handle_get_session_environment(data_dir: Path, session_id: str) -> JSONResponse:
+    session_dir = get_session_dir(data_dir, session_id)
+    env_file = session_dir / f"environment_{session_id}.json"
+
+    if not env_file.exists():
+        raise HTTPException(
+            status_code=404, detail="Environment data not found"
+        )
+
+    return JSONResponse(json.loads(env_file.read_text()))
+
+
 def register_ui_routes(app: FastAPI, data_dir: Path = None):
     if data_dir is None:
         data_dir = get_default_data_dir()
@@ -244,8 +279,7 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/exceptions")
     async def get_session_exceptions(session_id: str) -> JSONResponse:
-        session = _get_session(data_dir, session_id)
-        return JSONResponse({"exceptions": session.get_exceptions()})
+        return await _handle_get_session_exceptions(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/audio")
     async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
@@ -257,21 +291,11 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/metrics")
     async def get_session_metrics(session_id: str) -> JSONResponse:
-        spans = _get_session_spans(data_dir, session_id)
-        metrics = Metrics(spans)
-        return JSONResponse(metrics.to_dict())
+        return await _handle_get_session_metrics(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/download")
     async def download_session(session_id: str):
-        session = _get_session(data_dir, session_id)
-        zip_buffer = session.to_zip()
-        return StreamingResponse(
-            zip_buffer,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": f"attachment; filename=finchvox_session_{session_id}.zip"
-            }
-        )
+        return await _handle_download_session(data_dir, session_id)
 
     @app.post("/api/sessions/upload")
     async def upload_session(file: UploadFile = File(...)):
@@ -279,12 +303,4 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/environment")
     async def get_session_environment(session_id: str):
-        session_dir = get_session_dir(data_dir, session_id)
-        env_file = session_dir / f"environment_{session_id}.json"
-
-        if not env_file.exists():
-            raise HTTPException(
-                status_code=404, detail="Environment data not found"
-            )
-
-        return json.loads(env_file.read_text())
+        return await _handle_get_session_environment(data_dir, session_id)
