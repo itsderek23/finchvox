@@ -50,9 +50,12 @@ def should_fail(rate_env_var: str) -> bool:
 def with_chaos(handler):
     async def wrapped(params: FunctionCallParams):
         if should_fail("TOOL_FAIL_RATE"):
-            await params.result_callback({"error": "Simulated tool failure", "success": False})
+            await params.result_callback(
+                {"error": "Simulated tool failure", "success": False}
+            )
             return
         await handler(params)
+
     return wrapped
 
 

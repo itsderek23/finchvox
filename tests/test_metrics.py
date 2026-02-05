@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from finchvox.metrics import Metrics, TTFBDataPoint, TTFBSeries, TTFBStats
+from finchvox.metrics import Metrics
 from finchvox.ui_routes import register_ui_routes
 
 
@@ -39,19 +39,20 @@ def create_session_with_spans(data_dir: Path, session_id: str, spans: list):
             f.write("\n")
 
 
-def make_span(name: str, start_nano: int, ttfb_seconds: float = None, span_id: str = "abc123"):
+def make_span(
+    name: str, start_nano: int, ttfb_seconds: float = None, span_id: str = "abc123"
+):
     span = {
         "name": name,
         "span_id_hex": span_id,
         "start_time_unix_nano": str(start_nano),
         "end_time_unix_nano": str(start_nano + 1000000000),
-        "attributes": []
+        "attributes": [],
     }
     if ttfb_seconds is not None:
-        span["attributes"].append({
-            "key": "metrics.ttfb",
-            "value": {"double_value": ttfb_seconds}
-        })
+        span["attributes"].append(
+            {"key": "metrics.ttfb", "value": {"double_value": ttfb_seconds}}
+        )
     return span
 
 
@@ -60,7 +61,6 @@ def get_llm_series(spans: list):
 
 
 class TestMetricsClass:
-
     def test_extracts_ttfb_from_spans(self):
         spans = [
             make_span("llm", 1000000000000, ttfb_seconds=1.5, span_id="span1"),
@@ -193,7 +193,6 @@ class TestMetricsClass:
 
 
 class TestMetricsEndpoint:
-
     def test_returns_metrics_for_valid_session(self, client, temp_data_dir):
         session_id = "metrics_test_123"
         spans = [

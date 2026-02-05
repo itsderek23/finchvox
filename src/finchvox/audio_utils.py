@@ -60,7 +60,7 @@ def combine_chunks(chunks: List[Tuple[int, Path]], output_file: Path) -> None:
 
     logger.info(
         f"Combining {len(chunks)} chunks: "
-        f"{sample_rate}Hz, {num_channels} channels, {sample_width*8}-bit"
+        f"{sample_rate}Hz, {num_channels} channels, {sample_width * 8}-bit"
     )
 
     # Open output file

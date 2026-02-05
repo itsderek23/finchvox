@@ -12,20 +12,16 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 
 # Configure resource
-resource = Resource.create({
-    "service.name": "test-voice-app",
-    "service.version": "1.0.0"
-})
+resource = Resource.create(
+    {"service.name": "test-voice-app", "service.version": "1.0.0"}
+)
 
 # Create tracer provider
 provider = TracerProvider(resource=resource)
 trace.set_tracer_provider(provider)
 
 # Configure OTLP exporter pointing to Finchvox
-exporter = OTLPSpanExporter(
-    endpoint="http://localhost:4317",
-    insecure=True
-)
+exporter = OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
 
 # Add span processor
 provider.add_span_processor(BatchSpanProcessor(exporter))

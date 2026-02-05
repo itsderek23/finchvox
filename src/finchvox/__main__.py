@@ -24,31 +24,25 @@ Examples:
   python -m finchvox --port 8000               # Use custom HTTP port
   python -m finchvox --grpc-port 4318          # Use custom gRPC port
   python -m finchvox --data-dir ./my-data      # Use custom data directory
-        """
+        """,
     )
     parser.add_argument(
-        "--port",
-        type=int,
-        default=3000,
-        help="HTTP server port (default: 3000)"
+        "--port", type=int, default=3000, help="HTTP server port (default: 3000)"
     )
     parser.add_argument(
         "--grpc-port",
         type=int,
         default=GRPC_PORT,
-        help=f"gRPC server port (default: {GRPC_PORT})"
+        help=f"gRPC server port (default: {GRPC_PORT})",
     )
     parser.add_argument(
-        "--host",
-        type=str,
-        default="0.0.0.0",
-        help="Host to bind to (default: 0.0.0.0)"
+        "--host", type=str, default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
     )
     parser.add_argument(
         "--data-dir",
         type=str,
         default=None,
-        help="Data directory for traces/logs/audio/exceptions (default: ~/.finchvox)"
+        help="Data directory for traces/logs/audio/exceptions (default: ~/.finchvox)",
     )
 
     args = parser.parse_args()
@@ -69,10 +63,7 @@ Examples:
     print("=" * 50)
 
     server = UnifiedServer(
-        port=args.port,
-        grpc_port=args.grpc_port,
-        host=args.host,
-        data_dir=data_dir
+        port=args.port, grpc_port=args.grpc_port, host=args.host, data_dir=data_dir
     )
     server.run()
 

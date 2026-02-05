@@ -1,5 +1,7 @@
 from unittest.mock import Mock
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+    ExportTraceServiceRequest,
+)
 from opentelemetry.proto.trace.v1.trace_pb2 import Span, ResourceSpans, ScopeSpans
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
@@ -24,7 +26,7 @@ def create_test_request(num_spans=1):
     # Add test spans
     for i in range(num_spans):
         span = Span()
-        span.trace_id = b'\x01' * 16
+        span.trace_id = b"\x01" * 16
         span.span_id = bytes([i] * 8)
         span.name = f"test-span-{i}"
         scope_spans.spans.append(span)
@@ -48,7 +50,9 @@ def test_export_processes_spans():
     response = servicer.Export(request, context)
 
     # Verify writer was called for each span
-    assert mock_writer.write_span.call_count == 3, "Expected writer to be called 3 times"
+    assert mock_writer.write_span.call_count == 3, (
+        "Expected writer to be called 3 times"
+    )
 
     # Verify response indicates success
     assert response.partial_success.rejected_spans == 0
@@ -68,7 +72,7 @@ def test_export_returns_success():
     response = servicer.Export(request, context)
 
     # Verify response structure
-    assert hasattr(response, 'partial_success')
+    assert hasattr(response, "partial_success")
     assert response.partial_success.rejected_spans == 0
     assert response.partial_success.error_message == ""
 
@@ -90,7 +94,7 @@ def test_export_handles_errors():
 
     # Verify it returns a response (not crash)
     assert response is not None
-    assert hasattr(response, 'partial_success')
+    assert hasattr(response, "partial_success")
 
     # Error message should be present
     assert response.partial_success.error_message != ""
@@ -119,7 +123,7 @@ def test_export_with_multiple_resource_spans():
             # Each ScopeSpans has 2 spans
             for span_idx in range(2):
                 span = Span()
-                span.trace_id = b'\x01' * 16
+                span.trace_id = b"\x01" * 16
                 span.span_id = bytes([rs_idx, ss_idx, span_idx] + [0] * 5)
                 span.name = f"span-{rs_idx}-{ss_idx}-{span_idx}"
                 scope_spans.spans.append(span)

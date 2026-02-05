@@ -38,8 +38,8 @@ def test_write_span_creates_file(tmp_path):
 
     # Create mock span with known trace_id
     span = Span()
-    span.trace_id = b'\x01\x23\x45\x67\x89\xab\xcd\xef' * 2  # 16 bytes
-    span.span_id = b'\xaa\xbb\xcc\xdd\xee\xff\x00\x11'  # 8 bytes
+    span.trace_id = b"\x01\x23\x45\x67\x89\xab\xcd\xef" * 2  # 16 bytes
+    span.span_id = b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11"  # 8 bytes
     span.name = "test-span"
 
     # Create mock resource and scope spans
@@ -66,16 +66,16 @@ def test_write_multiple_spans_same_trace(tmp_path):
     writer = SpanWriter(tmp_path)
 
     # Create two spans with same trace_id
-    trace_id = b'\xaa\xbb\xcc\xdd' * 4  # 16 bytes
+    trace_id = b"\xaa\xbb\xcc\xdd" * 4  # 16 bytes
 
     span1 = Span()
     span1.trace_id = trace_id
-    span1.span_id = b'\x11\x11\x11\x11\x11\x11\x11\x11'
+    span1.span_id = b"\x11\x11\x11\x11\x11\x11\x11\x11"
     span1.name = "span-1"
 
     span2 = Span()
     span2.trace_id = trace_id
-    span2.span_id = b'\x22\x22\x22\x22\x22\x22\x22\x22'
+    span2.span_id = b"\x22\x22\x22\x22\x22\x22\x22\x22"
     span2.name = "span-2"
 
     # Create mock resource and scope spans
@@ -111,9 +111,9 @@ def test_span_json_fields_preserved(tmp_path):
 
     # Create span with various fields
     span = Span()
-    span.trace_id = b'\xff' * 16
-    span.span_id = b'\xee' * 8
-    span.parent_span_id = b'\xdd' * 8
+    span.trace_id = b"\xff" * 16
+    span.span_id = b"\xee" * 8
+    span.parent_span_id = b"\xdd" * 8
     span.name = "test-span-with-fields"
     span.kind = 1  # SPAN_KIND_INTERNAL
     span.start_time_unix_nano = 1640000000000000000
@@ -155,12 +155,12 @@ def test_trace_id_hex_conversion(tmp_path):
     writer = SpanWriter(tmp_path)
 
     # Create span with specific trace_id
-    trace_id_bytes = b'\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10'
+    trace_id_bytes = b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
     expected_hex = "0102030405060708090a0b0c0d0e0f10"
 
     span = Span()
     span.trace_id = trace_id_bytes
-    span.span_id = b'\xff' * 8
+    span.span_id = b"\xff" * 8
     span.name = "hex-test-span"
 
     # Create mock resource and scope spans

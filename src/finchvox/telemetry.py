@@ -13,6 +13,7 @@ _sent_events: set[str] = set()
 def get_version() -> str:
     try:
         from importlib.metadata import version
+
         return version("finchvox")
     except Exception:
         return "unknown"
@@ -42,17 +43,17 @@ async def _send_event_async(event_type: str) -> None:
         "event": event_type,
         "version": get_version(),
         "os": get_os(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                TELEMETRY_URL,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=5)
+                TELEMETRY_URL, json=payload, timeout=aiohttp.ClientTimeout(total=5)
             ) as response:
-                logger.debug(f"Telemetry sent: {event_type} (status: {response.status})")
+                logger.debug(
+                    f"Telemetry sent: {event_type} (status: {response.status})"
+                )
     except Exception as e:
         logger.debug(f"Telemetry failed (non-fatal): {e}")
 

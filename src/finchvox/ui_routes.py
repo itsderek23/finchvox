@@ -27,23 +27,25 @@ if not UI_DIR.exists():
 
 
 def _get_combined_audio_file(
-    data_dir: Path,
-    session_id: str,
-    background_tasks: BackgroundTasks
+    data_dir: Path, session_id: str, background_tasks: BackgroundTasks
 ) -> Path:
     audio_dir = get_session_audio_dir(data_dir, session_id)
     if not audio_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Audio for session {session_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Audio for session {session_id} not found"
+        )
 
     logger.info(f"Finding audio chunks for session {session_id}")
     chunks = find_chunks(get_sessions_base_dir(data_dir), session_id)
 
     if not chunks:
-        raise HTTPException(status_code=404, detail=f"No audio chunks found for session {session_id}")
+        raise HTTPException(
+            status_code=404, detail=f"No audio chunks found for session {session_id}"
+        )
 
     logger.info(f"Found {len(chunks)} chunks for session {session_id}")
 
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp_path = Path(tmp.name)
 
     combine_chunks(chunks, tmp_path)
@@ -123,11 +125,13 @@ async def _handle_get_session_raw(data_dir: Path, session_id: str) -> JSONRespon
     return JSONResponse(
         content=content,
         media_type="application/json",
-        headers={"Content-Type": "application/json; charset=utf-8"}
+        headers={"Content-Type": "application/json; charset=utf-8"},
     )
 
 
-async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) -> JSONResponse:
+async def _handle_get_session_logs(
+    data_dir: Path, session_id: str, limit: int
+) -> JSONResponse:
     session = _get_session(data_dir, session_id)
 
     try:
@@ -135,18 +139,22 @@ async def _handle_get_session_logs(data_dir: Path, session_id: str, limit: int) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
 
-    logs.sort(key=lambda l: int(l.get("time_unix_nano", 0)))
+    logs.sort(key=lambda log: int(log.get("time_unix_nano", 0)))
     total_count = len(logs)
 
-    return JSONResponse({
-        "logs": logs[:limit],
-        "total_count": total_count,
-        "limit": limit,
-        "trace_start_time": session.start_time_nano
-    })
+    return JSONResponse(
+        {
+            "logs": logs[:limit],
+            "total_count": total_count,
+            "limit": limit,
+            "trace_start_time": session.start_time_nano,
+        }
+    )
 
 
-async def _handle_get_session_conversation(data_dir: Path, session_id: str) -> JSONResponse:
+async def _handle_get_session_conversation(
+    data_dir: Path, session_id: str
+) -> JSONResponse:
     spans = _get_session_spans(data_dir, session_id)
     conversation = Conversation(spans)
     return JSONResponse({"messages": conversation.to_dict_list()})
@@ -156,7 +164,7 @@ async def _handle_get_session_audio(
     data_dir: Path,
     session_id: str,
     background_tasks: BackgroundTasks,
-    as_download: bool = False
+    as_download: bool = False,
 ) -> FileResponse:
     tmp_path = _get_combined_audio_file(data_dir, session_id, background_tasks)
     disposition = "attachment" if as_download else "inline"
@@ -164,11 +172,15 @@ async def _handle_get_session_audio(
     return FileResponse(
         str(tmp_path),
         media_type="audio/wav",
-        headers={"Content-Disposition": f"{disposition}; filename=session_{session_id}.wav"}
+        headers={
+            "Content-Disposition": f"{disposition}; filename=session_{session_id}.wav"
+        },
     )
 
 
-async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> JSONResponse:
+async def _handle_get_session_audio_status(
+    data_dir: Path, session_id: str
+) -> JSONResponse:
     audio_dir = get_session_audio_dir(data_dir, session_id)
 
     if not audio_dir.exists():
@@ -183,11 +195,8 @@ async def _handle_get_session_audio_status(data_dir: Path, session_id: str) -> J
     return JSONResponse({"chunk_count": len(chunks), "last_modified": last_modified})
 
 
-
-
 async def _handle_upload_session(
-    sessions_base_dir: Path,
-    file: UploadFile
+    sessions_base_dir: Path, file: UploadFile
 ) -> JSONResponse:
     zip_bytes = await file.read()
 
@@ -198,7 +207,9 @@ async def _handle_upload_session(
     return JSONResponse({"success": True, "session_id": session.session_id})
 
 
-async def _handle_get_session_exceptions(data_dir: Path, session_id: str) -> JSONResponse:
+async def _handle_get_session_exceptions(
+    data_dir: Path, session_id: str
+) -> JSONResponse:
     session = _get_session(data_dir, session_id)
     return JSONResponse({"exceptions": session.get_exceptions()})
 
@@ -209,7 +220,9 @@ async def _handle_get_session_metrics(data_dir: Path, session_id: str) -> JSONRe
     return JSONResponse(metrics.to_dict())
 
 
-async def _handle_download_session(data_dir: Path, session_id: str) -> StreamingResponse:
+async def _handle_download_session(
+    data_dir: Path, session_id: str
+) -> StreamingResponse:
     session = _get_session(data_dir, session_id)
     zip_buffer = session.to_zip()
     return StreamingResponse(
@@ -217,18 +230,18 @@ async def _handle_download_session(data_dir: Path, session_id: str) -> Streaming
         media_type="application/zip",
         headers={
             "Content-Disposition": f"attachment; filename=finchvox_session_{session_id}.zip"
-        }
+        },
     )
 
 
-async def _handle_get_session_environment(data_dir: Path, session_id: str) -> JSONResponse:
+async def _handle_get_session_environment(
+    data_dir: Path, session_id: str
+) -> JSONResponse:
     session_dir = get_session_dir(data_dir, session_id)
     env_file = session_dir / f"environment_{session_id}.json"
 
     if not env_file.exists():
-        raise HTTPException(
-            status_code=404, detail="Environment data not found"
-        )
+        raise HTTPException(status_code=404, detail="Environment data not found")
 
     return JSONResponse(json.loads(env_file.read_text()))
 
