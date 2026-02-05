@@ -57,6 +57,22 @@ function metricsViewMixin() {
                     this.createChartConfig(service, seriesData)
                 );
             }
+
+            this.initUserBotLatencyChart();
+        },
+
+        initUserBotLatencyChart() {
+            const latencyData = this.metricsData?.user_bot_latency;
+            if (!latencyData || !latencyData.data_points?.length) return;
+
+            const canvas = document.getElementById('user-bot-latency-chart');
+            if (!canvas) return;
+
+            canvas.addEventListener('mouseleave', () => this.hideMarkerFromMetrics());
+            this.metricsCharts['user_bot_latency'] = new Chart(
+                canvas.getContext('2d'),
+                this.createLatencyChartConfig(latencyData)
+            );
         },
 
         createChartConfig(service, seriesData) {
@@ -76,8 +92,8 @@ function metricsViewMixin() {
                         borderColor: color,
                         backgroundColor: color + '33',
                         borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 2,
+                        pointHoverRadius: 3,
                         pointBackgroundColor: color,
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 1,
@@ -200,6 +216,105 @@ function metricsViewMixin() {
                 tts: '#a855f7'
             };
             return colors[service] || '#6b7280';
+        },
+
+        createLatencyChartConfig(seriesData) {
+            const color = '#10b981';
+            const dataPoints = seriesData.data_points.map(p => ({
+                x: p.relative_time_ms / 1000,
+                y: p.latency_ms,
+                span_id: p.span_id
+            }));
+
+            return {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Latency',
+                        data: dataPoints,
+                        borderColor: color,
+                        backgroundColor: color + '33',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        pointHoverRadius: 3,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: this.createLatencyChartOptions(color)
+            };
+        },
+
+        createLatencyChartOptions(color) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                onClick: (event, elements) => this.handleLatencyChartClick(elements),
+                onHover: (event, elements) => this.handleLatencyChartHover(elements),
+                plugins: {
+                    legend: { display: false },
+                    tooltip: this.createLatencyTooltipConfig(color)
+                },
+                scales: {
+                    x: this.createXAxisConfig(),
+                    y: this.createYAxisConfig()
+                }
+            };
+        },
+
+        createLatencyTooltipConfig(color) {
+            return {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#ffffff',
+                bodyColor: '#ffffff',
+                borderColor: color,
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false,
+                callbacks: {
+                    title: (items) => {
+                        if (!items.length) return '';
+                        return `Time: ${this.formatMetricsTime(items[0].parsed.x)}`;
+                    },
+                    label: (context) => `Latency: ${context.parsed.y.toFixed(1)}ms`
+                }
+            };
+        },
+
+        handleLatencyChartClick(elements) {
+            if (!elements || elements.length === 0) return;
+
+            const dataIndex = elements[0].index;
+            const dataPoint = this.metricsData.user_bot_latency.data_points[dataIndex];
+            if (!dataPoint) return;
+
+            const span = this.spans.find(s => s.span_id_hex === dataPoint.span_id);
+            if (span) {
+                this.selectSpan(span, true);
+            }
+        },
+
+        handleLatencyChartHover(elements) {
+            if (!elements || elements.length === 0) {
+                return;
+            }
+
+            const dataIndex = elements[0].index;
+            const dataPoint = this.metricsData.user_bot_latency.data_points[dataIndex];
+            if (!dataPoint) return;
+
+            this.showMarkerFromMetrics(dataPoint.relative_time_ms / 1000);
+        },
+
+        getUserBotLatencyStats() {
+            if (!this.metricsData || !this.metricsData.user_bot_latency) {
+                return null;
+            }
+            return this.metricsData.user_bot_latency.stats;
         },
 
         formatMetricsTime(seconds) {

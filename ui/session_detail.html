@@ -359,8 +359,24 @@
             </div>
 
             <!-- Charts Grid -->
-            <div x-show="!metricsLoading && !metricsError && metricsData && metricsData.services && metricsData.services.length > 0"
+            <div x-show="!metricsLoading && !metricsError && metricsData && (metricsData.services?.length > 0 || metricsData.user_bot_latency?.data_points?.length > 0)"
                  class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- User-Bot Latency Chart -->
+                <template x-if="metricsData?.user_bot_latency?.data_points?.length > 0">
+                    <div class="bg-white/[0.02] rounded-lg border border-white/10 p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm font-mono uppercase text-span-turn">USER-BOT LATENCY</span>
+                            <div class="flex gap-4 text-xs text-white/50">
+                                <span>AVG <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.avg_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p50 <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.p50_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p95 <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.p95_ms)"></span><span class="font-mono">ms</span></span>
+                            </div>
+                        </div>
+                        <div style="height: 200px;">
+                            <canvas id="user-bot-latency-chart"></canvas>
+                        </div>
+                    </div>
+                </template>
                 <template x-for="service in metricsData?.services || []" :key="service">
                     <div class="bg-white/[0.02] rounded-lg border border-white/10 p-4">
                         <!-- Header with service name and stats -->
