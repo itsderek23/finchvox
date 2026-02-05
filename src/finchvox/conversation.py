@@ -104,7 +104,11 @@ class Conversation:
     ):
         if not acc.has_content():
             return
-        was_interrupted = self._get_interruption_status(acc.first_span) if check_interruption else False
+        was_interrupted = (
+            self._get_interruption_status(acc.first_span)
+            if check_interruption
+            else False
+        )
         messages.append(self._create_message_from_accumulator(acc, was_interrupted))
 
     def _build_messages_from_spans(

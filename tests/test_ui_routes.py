@@ -1,7 +1,6 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -51,15 +50,26 @@ def create_session_with_logs(data_dir: Path, session_id: str, spans: list, logs:
 
 
 class TestGetLogsEndpoint:
-
     def test_returns_logs_for_valid_session(self, client, temp_data_dir):
         session_id = "abc123def456"
         spans = [
-            {"name": "test-span", "start_time_unix_nano": 1000000000, "end_time_unix_nano": 2000000000}
+            {
+                "name": "test-span",
+                "start_time_unix_nano": 1000000000,
+                "end_time_unix_nano": 2000000000,
+            }
         ]
         logs = [
-            {"time_unix_nano": 1500000000, "severity_text": "INFO", "body": "Test message 1"},
-            {"time_unix_nano": 1200000000, "severity_text": "DEBUG", "body": "Test message 2"},
+            {
+                "time_unix_nano": 1500000000,
+                "severity_text": "INFO",
+                "body": "Test message 1",
+            },
+            {
+                "time_unix_nano": 1200000000,
+                "severity_text": "DEBUG",
+                "body": "Test message 2",
+            },
         ]
         create_session_with_logs(temp_data_dir, session_id, spans, logs)
 
@@ -73,10 +83,16 @@ class TestGetLogsEndpoint:
         assert data["limit"] == 1000
         assert data["trace_start_time"] == 1000000000
 
-    def test_returns_empty_array_for_session_with_no_logs_file(self, client, temp_data_dir):
+    def test_returns_empty_array_for_session_with_no_logs_file(
+        self, client, temp_data_dir
+    ):
         session_id = "nologs123"
         spans = [
-            {"name": "test-span", "start_time_unix_nano": 5000000000, "end_time_unix_nano": 6000000000}
+            {
+                "name": "test-span",
+                "start_time_unix_nano": 5000000000,
+                "end_time_unix_nano": 6000000000,
+            }
         ]
         create_session_with_logs(temp_data_dir, session_id, spans, logs=[])
 

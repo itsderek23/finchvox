@@ -70,7 +70,9 @@ def init(
         _setup_log_capture(service_name, endpoint, insecure)
 
     _initialized = True
-    logger.info(f"Finchvox v{version('finchvox')} initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}")
+    logger.info(
+        f"Finchvox v{version('finchvox')} initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}"
+    )
 
 
 def _is_allowed_source(module: str, pathname: str | None) -> bool:
@@ -128,6 +130,7 @@ class TraceContextLoggingHandler(logging.Handler):
         ctx = _get_pipecat_context()
         if ctx:
             from opentelemetry.context import attach, detach
+
             token = attach(ctx)
             try:
                 self._otel_handler.emit(record)
@@ -172,10 +175,14 @@ def _get_pipecat_context():
     """
     try:
         from pipecat.utils.tracing.turn_context_provider import get_current_turn_context
+
         ctx = get_current_turn_context()
         if ctx:
             return ctx
-        from pipecat.utils.tracing.conversation_context_provider import get_current_conversation_context
+        from pipecat.utils.tracing.conversation_context_provider import (
+            get_current_conversation_context,
+        )
+
         return get_current_conversation_context()
     except ImportError:
         return None
@@ -218,6 +225,7 @@ def _setup_loguru_bridge() -> None:
 
         if turn_context:
             from opentelemetry.context import attach, detach
+
             token = attach(turn_context)
             try:
                 stdlib_logger.handle(log_record)
@@ -229,6 +237,6 @@ def _setup_loguru_bridge() -> None:
     loguru_logger.configure(patcher=log_patcher)
 
 
-from finchvox.processor import FinchvoxProcessor
+from finchvox.processor import FinchvoxProcessor  # noqa: E402
 
 __all__ = ["init", "FinchvoxProcessor"]

@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: fix-ruff
+        name: fix-ruff
+        entry: uv run scripts/fix-ruff.sh
+        language: system
+        types: [python]
+        pass_filenames: false

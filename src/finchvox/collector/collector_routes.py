@@ -18,9 +18,7 @@ from .config import ALLOWED_AUDIO_FORMATS, MAX_AUDIO_FILE_SIZE, get_session_dir
 
 
 def register_collector_routes(
-    app: FastAPI,
-    audio_handler: AudioHandler,
-    prefix: str = "/collector"
+    app: FastAPI, audio_handler: AudioHandler, prefix: str = "/collector"
 ):
     """
     Register collector routes on an existing FastAPI app with URL prefix.
@@ -76,7 +74,12 @@ def register_collector_routes(
                 )
 
             # Validate required metadata fields
-            required_fields = ["chunk_number", "timestamp", "sample_rate", "num_channels"]
+            required_fields = [
+                "chunk_number",
+                "timestamp",
+                "sample_rate",
+                "num_channels",
+            ]
             missing = [f for f in required_fields if f not in metadata_dict]
             if missing:
                 raise HTTPException(
@@ -107,9 +110,13 @@ def register_collector_routes(
             is_new_trace = len(existing_chunks) == 0
 
             if is_new_trace:
-                logger.info(f"New audio trace {trace_id[:8]}... - receiving chunk #{metadata_dict['chunk_number']}")
+                logger.info(
+                    f"New audio trace {trace_id[:8]}... - receiving chunk #{metadata_dict['chunk_number']}"
+                )
             else:
-                logger.info(f"Audio trace {trace_id[:8]}... - receiving chunk #{metadata_dict['chunk_number']} (total: {len(existing_chunks) + 1})")
+                logger.info(
+                    f"Audio trace {trace_id[:8]}... - receiving chunk #{metadata_dict['chunk_number']} (total: {len(existing_chunks) + 1})"
+                )
 
             # Save audio chunk
             saved_path = await audio_handler.save_audio_chunk(

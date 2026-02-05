@@ -43,9 +43,7 @@ def capture_environment() -> dict:
         from importlib.metadata import distributions
 
         env["packages"] = {
-            d.metadata["Name"]: d.version
-            for d in distributions()
-            if d.metadata["Name"]
+            d.metadata["Name"]: d.version for d in distributions() if d.metadata["Name"]
         }
     except Exception:
         pass

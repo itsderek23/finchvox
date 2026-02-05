@@ -36,7 +36,7 @@ class TTFBSeries:
         return {
             "service": self.service,
             "data_points": [dp.to_dict() for dp in self.data_points],
-            "stats": self.stats.to_dict()
+            "stats": self.stats.to_dict(),
         }
 
 
@@ -89,7 +89,7 @@ class Metrics:
             max_ms=max(values),
             p50_ms=sorted_vals[p50_idx],
             p95_ms=sorted_vals[p95_idx],
-            count=n
+            count=n,
         )
 
     def _extract_ttfb_data_point(self, span: dict) -> TTFBDataPoint | None:
@@ -104,7 +104,7 @@ class Metrics:
             timestamp_ms=timestamp_ms,
             relative_time_ms=timestamp_ms - self.session_start_ms,
             ttfb_ms=ttfb_seconds * 1000,
-            span_id=span.get("span_id_hex", "")
+            span_id=span.get("span_id_hex", ""),
         )
 
     def _collect_data_points(self) -> dict[str, list[TTFBDataPoint]]:
@@ -118,7 +118,9 @@ class Metrics:
                 series[name].append(data_point)
         return series
 
-    def _build_series(self, service: str, data_points: list[TTFBDataPoint]) -> TTFBSeries:
+    def _build_series(
+        self, service: str, data_points: list[TTFBDataPoint]
+    ) -> TTFBSeries:
         data_points.sort(key=lambda dp: dp.timestamp_ms)
         stats = self._compute_stats([dp.ttfb_ms for dp in data_points])
         return TTFBSeries(service=service, data_points=data_points, stats=stats)
@@ -141,5 +143,5 @@ class Metrics:
         series = self.get_ttfb_series()
         return {
             "series": {s: series[s].to_dict() for s in series},
-            "services": list(series.keys())
+            "services": list(series.keys()),
         }

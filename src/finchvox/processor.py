@@ -29,6 +29,7 @@ from pipecat.utils.tracing.conversation_context_provider import (
 
 def _is_finchvox_initialized() -> bool:
     import finchvox
+
     return finchvox._initialized
 
 
@@ -103,7 +104,16 @@ class FinchvoxProcessor(FrameProcessor):
         await self.push_frame(frame, direction)
 
     async def _process_audio_frame(self, frame: Frame, direction: FrameDirection):
-        if isinstance(frame, (StartFrame, InputAudioRawFrame, OutputAudioRawFrame, EndFrame, CancelFrame)):
+        if isinstance(
+            frame,
+            (
+                StartFrame,
+                InputAudioRawFrame,
+                OutputAudioRawFrame,
+                EndFrame,
+                CancelFrame,
+            ),
+        ):
             await self._audio_buffer.process_frame(frame, direction)
 
         if isinstance(frame, InputAudioRawFrame):

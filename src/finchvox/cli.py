@@ -20,6 +20,7 @@ def get_version() -> str:
     # Read version from pyproject.toml or package metadata
     try:
         from importlib.metadata import version
+
         return version("finchvox")
     except Exception:
         return "0.0.1"  # Fallback version
@@ -53,10 +54,7 @@ def cmd_start(args):
     print("=" * 50)
 
     server = UnifiedServer(
-        port=args.port,
-        grpc_port=args.grpc_port,
-        host=args.host,
-        data_dir=data_dir
+        port=args.port, grpc_port=args.grpc_port, host=args.host, data_dir=data_dir
     )
     server.run()
 
@@ -73,7 +71,7 @@ def main():
         title="commands",
         description="Available commands",
         dest="command",
-        required=True
+        required=True,
     )
 
     # 'start' subcommand
@@ -88,37 +86,31 @@ Examples:
   finchvox start --port 8000               # Custom HTTP port
   finchvox start --grpc-port 4318          # Custom gRPC port
   finchvox start --data-dir ./my-data      # Custom data directory
-        """
+        """,
     )
     start_parser.add_argument(
-        "--port",
-        type=int,
-        default=3000,
-        help="HTTP server port (default: 3000)"
+        "--port", type=int, default=3000, help="HTTP server port (default: 3000)"
     )
     start_parser.add_argument(
         "--grpc-port",
         type=int,
         default=GRPC_PORT,
-        help=f"gRPC server port (default: {GRPC_PORT})"
+        help=f"gRPC server port (default: {GRPC_PORT})",
     )
     start_parser.add_argument(
-        "--host",
-        type=str,
-        default="0.0.0.0",
-        help="Host to bind to (default: 0.0.0.0)"
+        "--host", type=str, default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
     )
     start_parser.add_argument(
         "--data-dir",
         type=str,
         default=None,
-        help="Data directory for traces/logs/audio/exceptions (default: ~/.finchvox)"
+        help="Data directory for traces/logs/audio/exceptions (default: ~/.finchvox)",
     )
     start_parser.add_argument(
         "--telemetry",
         type=str,
         default="true",
-        help="Enable or disable anonymous usage telemetry (default: true)"
+        help="Enable or disable anonymous usage telemetry (default: true)",
     )
     start_parser.set_defaults(func=cmd_start)
 
@@ -126,7 +118,7 @@ Examples:
     version_parser = subparsers.add_parser(
         "version",
         help="Display version information",
-        description="Display FinchVox version and Python version"
+        description="Display FinchVox version and Python version",
     )
     version_parser.set_defaults(func=cmd_version)
 

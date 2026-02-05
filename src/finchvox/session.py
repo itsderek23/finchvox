@@ -10,7 +10,7 @@ from finchvox.audio_utils import find_chunks
 
 def _read_jsonl_file(file_path: Path) -> list[dict]:
     records = []
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         for line in f:
             if line.strip():
                 records.append(json.loads(line))
@@ -75,7 +75,7 @@ class Session:
         service_name = None
 
         try:
-            with open(self.trace_file, 'r') as f:
+            with open(self.trace_file, "r") as f:
                 for line in f:
                     if line.strip():
                         span = json.loads(line)
@@ -103,7 +103,7 @@ class Session:
 
         try:
             count = 0
-            with open(log_file, 'r') as f:
+            with open(log_file, "r") as f:
                 for line in f:
                     if line.strip():
                         count += 1
@@ -159,7 +159,9 @@ class Session:
 
     def to_dict(self) -> dict:
         audio_bytes = self.get_audio_size_bytes()
-        audio_size_mb = audio_bytes // (1024 * 1024) if audio_bytes is not None else None
+        audio_size_mb = (
+            audio_bytes // (1024 * 1024) if audio_bytes is not None else None
+        )
         return {
             "session_id": self.session_id,
             "service_name": self.service_name,
@@ -173,10 +175,12 @@ class Session:
 
     def to_zip(self) -> io.BytesIO:
         zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for file_path in self.session_dir.rglob('*'):
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_path in self.session_dir.rglob("*"):
                 if file_path.is_file():
-                    arcname = f"{self.session_id}/{file_path.relative_to(self.session_dir)}"
+                    arcname = (
+                        f"{self.session_id}/{file_path.relative_to(self.session_dir)}"
+                    )
                     zf.write(file_path, arcname)
 
         zip_buffer.seek(0)
@@ -211,7 +215,7 @@ class Session:
         if not self.logs_file.exists():
             return []
         logs = []
-        with open(self.logs_file, 'r') as f:
+        with open(self.logs_file, "r") as f:
             for line in f:
                 if line.strip():
                     try:
@@ -229,7 +233,7 @@ class Session:
     def _validate_jsonl_file(zf: zipfile.ZipFile, jsonl_file: str) -> str | None:
         with zf.open(jsonl_file) as f:
             for line_num, line in enumerate(f, 1):
-                line = line.decode('utf-8').strip()
+                line = line.decode("utf-8").strip()
                 if not line:
                     continue
                 try:
@@ -241,8 +245,8 @@ class Session:
     @staticmethod
     def validate_zip(zip_bytes: bytes) -> tuple[bool, str | None]:
         try:
-            with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
-                jsonl_files = [f for f in zf.namelist() if f.endswith('.jsonl')]
+            with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
+                jsonl_files = [f for f in zf.namelist() if f.endswith(".jsonl")]
                 if not jsonl_files:
                     return False, "Zip must contain at least one .jsonl file"
 
@@ -257,20 +261,22 @@ class Session:
 
     @staticmethod
     def extract_id_from_zip(zip_bytes: bytes) -> str | None:
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
             file_list = zf.namelist()
             if not file_list:
                 return None
 
             first_path = file_list[0]
-            parts = first_path.split('/')
+            parts = first_path.split("/")
             if parts and parts[0]:
                 return parts[0]
 
         return None
 
     @staticmethod
-    def from_zip(zip_bytes: bytes, sessions_base_dir: Path) -> tuple[Optional['Session'], str | None]:
+    def from_zip(
+        zip_bytes: bytes, sessions_base_dir: Path
+    ) -> tuple[Optional["Session"], str | None]:
         is_valid, error_msg = Session.validate_zip(zip_bytes)
         if not is_valid:
             return None, error_msg
@@ -283,7 +289,7 @@ class Session:
         if session_dir.exists():
             shutil.rmtree(session_dir)
 
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), 'r') as zf:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
             zf.extractall(sessions_base_dir)
 
         return Session(session_dir), None
