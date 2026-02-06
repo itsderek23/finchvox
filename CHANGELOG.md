@@ -5,6 +5,28 @@ All notable changes to **Finchvox** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.12] - 2026-2-4
+
+- Fix Error processing frame: 'AudioBufferProcessor' object has no attribute '\_last_user_frame_at' from pipecat-ai v0.0.101.
+
+## [0.0.11] - 2026-2-3
+
+- Add session environment information (OS, Python version, Python packages).
+
+## [0.0.10] - 2026-2-2
+
+- Add session download and upload for sharing sessions between machines.
+
+## [0.0.9] - 2026-1-30
+
+- Add error visibility improvements: error icons on spans with exceptions and ability to jump from log entries to their associated span.
+- Add tool call visibility: tool icons on LLM spans and tool call names shown in the detail panel.
+- Improve trace view readability with larger bars and fonts, better spacing between spans, and improved label overlap detection.
+
+## [0.0.8] - 2026-1-27
+
+- Add anonymous telemetry collection (can be disabled)
+
 ## [0.0.7] - 2026-1-25
 
 - Add metrics view to session detail with a breakdown of TTFB by service (LLM, SST, TTS).

@@ -6,8 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from finchvox.adapters import get_adapter
-from finchvox.metrics import Metrics, TTFBDataPoint, TTFBSeries, TTFBStats
+from finchvox.metrics import Metrics
 from finchvox.ui_routes import register_ui_routes
 
 
@@ -49,7 +48,9 @@ CATEGORY_MAP = {
 }
 
 
-def make_span(name: str, start_nano: int, ttfb_seconds: float = None, span_id: str = "abc123"):
+def make_span(
+    name: str, start_nano: int, ttfb_seconds: float = None, span_id: str = "abc123"
+):
     span = {
         "name": name,
         "span_id_hex": span_id,
@@ -64,13 +65,32 @@ def make_span(name: str, start_nano: int, ttfb_seconds: float = None, span_id: s
             "transcript": None,
             "output_text": None,
             "ttfb_seconds": ttfb_seconds,
-        }
+        },
     }
     if ttfb_seconds is not None:
-        span["attributes"].append({
-            "key": "metrics.ttfb",
-            "value": {"double_value": ttfb_seconds}
-        })
+        span["attributes"].append(
+            {"key": "metrics.ttfb", "value": {"double_value": ttfb_seconds}}
+        )
+    return span
+
+
+def make_turn_span(
+    start_nano: int, latency_seconds: float = None, span_id: str = "turn123"
+):
+    span = {
+        "name": "turn",
+        "span_id_hex": span_id,
+        "start_time_unix_nano": str(start_nano),
+        "end_time_unix_nano": str(start_nano + 1000000000),
+        "attributes": [],
+    }
+    if latency_seconds is not None:
+        span["attributes"].append(
+            {
+                "key": "turn.user_bot_latency_seconds",
+                "value": {"double_value": latency_seconds},
+            }
+        )
     return span
 
 
@@ -79,7 +99,6 @@ def get_llm_series(spans: list):
 
 
 class TestMetricsClass:
-
     def test_extracts_ttfb_from_spans(self):
         spans = [
             make_span("llm", 1000000000000, ttfb_seconds=1.5, span_id="span1"),
@@ -210,9 +229,109 @@ class TestMetricsClass:
 
         assert first_call == second_call == 1000000.0
 
+    def test_extracts_user_bot_latency_from_turn_spans(self):
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.5, span_id="turn1"),
+            make_turn_span(2000000000000, latency_seconds=2.0, span_id="turn2"),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+
+        assert series is not None
+        assert len(series.data_points) == 2
+        assert series.data_points[0].latency_ms == 1500.0
+        assert series.data_points[1].latency_ms == 2000.0
+
+    def test_ignores_turns_without_latency_attribute(self):
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="with_latency"),
+            make_turn_span(
+                2000000000000, latency_seconds=None, span_id="without_latency"
+            ),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+
+        assert len(series.data_points) == 1
+        assert series.data_points[0].span_id == "with_latency"
+
+    def test_ignores_non_turn_spans_for_latency(self):
+        spans = [
+            make_span("llm", 1000000000000, ttfb_seconds=1.0, span_id="llm1"),
+            make_span("stt", 1100000000000, ttfb_seconds=0.5, span_id="stt1"),
+            make_turn_span(1200000000000, latency_seconds=2.0, span_id="turn1"),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+
+        assert len(series.data_points) == 1
+        assert series.data_points[0].span_id == "turn1"
+
+    def test_computes_user_bot_latency_relative_time(self):
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="turn1"),
+            make_turn_span(1500000000000, latency_seconds=2.0, span_id="turn2"),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+
+        assert series.data_points[0].relative_time_ms == 0.0
+        assert series.data_points[1].relative_time_ms == 500000.0
+
+    def test_sorts_latency_data_points_by_timestamp(self):
+        spans = [
+            make_turn_span(3000000000000, latency_seconds=3.0, span_id="turn3"),
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="turn1"),
+            make_turn_span(2000000000000, latency_seconds=2.0, span_id="turn2"),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+
+        assert series.data_points[0].span_id == "turn1"
+        assert series.data_points[1].span_id == "turn2"
+        assert series.data_points[2].span_id == "turn3"
+
+    def test_computes_user_bot_latency_statistics(self):
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="turn1"),
+            make_turn_span(2000000000000, latency_seconds=2.0, span_id="turn2"),
+            make_turn_span(3000000000000, latency_seconds=3.0, span_id="turn3"),
+            make_turn_span(4000000000000, latency_seconds=4.0, span_id="turn4"),
+        ]
+        metrics = Metrics(spans)
+        series = metrics.get_user_bot_latency_series()
+        stats = series.stats
+
+        assert stats.count == 4
+        assert stats.min_ms == 1000.0
+        assert stats.max_ms == 4000.0
+        assert stats.avg_ms == 2500.0
+        assert stats.p50_ms == 3000.0
+
+    def test_to_dict_includes_user_bot_latency(self):
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="turn1"),
+        ]
+        metrics = Metrics(spans)
+        result = metrics.to_dict()
+
+        assert "user_bot_latency" in result
+        assert result["user_bot_latency"] is not None
+        assert "data_points" in result["user_bot_latency"]
+        assert "stats" in result["user_bot_latency"]
+
+    def test_empty_when_no_turns_with_latency(self):
+        spans = [
+            make_span("llm", 1000000000000, ttfb_seconds=1.0, span_id="llm1"),
+            make_turn_span(1100000000000, latency_seconds=None, span_id="turn1"),
+        ]
+        metrics = Metrics(spans)
+        result = metrics.to_dict()
+
+        assert result["user_bot_latency"] is None
+
 
 class TestMetricsEndpoint:
-
     def test_returns_metrics_for_valid_session(self, client, temp_data_dir):
         session_id = "metrics_test_123"
         spans = [
@@ -270,3 +389,40 @@ class TestMetricsEndpoint:
         assert "p95_ms" in llm_stats
         assert "count" in llm_stats
         assert llm_stats["count"] == 2
+
+    def test_returns_user_bot_latency_for_valid_session(self, client, temp_data_dir):
+        session_id = "latency_test_123"
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.5, span_id="turn1"),
+            make_turn_span(2000000000000, latency_seconds=2.0, span_id="turn2"),
+        ]
+        create_session_with_spans(temp_data_dir, session_id, spans)
+
+        response = client.get(f"/api/sessions/{session_id}/metrics")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "user_bot_latency" in data
+        assert data["user_bot_latency"] is not None
+        assert len(data["user_bot_latency"]["data_points"]) == 2
+
+    def test_latency_stats_included_in_response(self, client, temp_data_dir):
+        session_id = "latency_stats_session"
+        spans = [
+            make_turn_span(1000000000000, latency_seconds=1.0, span_id="turn1"),
+            make_turn_span(2000000000000, latency_seconds=2.0, span_id="turn2"),
+        ]
+        create_session_with_spans(temp_data_dir, session_id, spans)
+
+        response = client.get(f"/api/sessions/{session_id}/metrics")
+
+        assert response.status_code == 200
+        data = response.json()
+        latency_stats = data["user_bot_latency"]["stats"]
+        assert "avg_ms" in latency_stats
+        assert "min_ms" in latency_stats
+        assert "max_ms" in latency_stats
+        assert "p50_ms" in latency_stats
+        assert "p95_ms" in latency_stats
+        assert "count" in latency_stats
+        assert latency_stats["count"] == 2

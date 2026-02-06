@@ -1,11 +1,13 @@
-# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - elevated debugging for Pipecat Voice AI
+# <img src="ui/images/finchvox-logo.png" height=24 /> Finchvox - Voice AI Observability, Elevated.
 
-Do your eyes bleed like a Vecna victim watching Pipecat logs fly by? Does flipping between audio recordings, transcripts, and logs damage your ⌘+tab keys from frequent use? If so, meet Finchvox, a local debugger purpose-built for Voice AI apps.
+Meet Finchvox, local session replay purpose-built for Voice AI apps.
 
-Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency.
+Finchvox unifies conversation audio, logs, traces, and metrics in a single UI, highlighting voice-specific problems like interruptions and high user <-> bot latency. Finchvox is currently designed for local, development usage.
+
+Visit [Finchvox.dev](https://finchvox.dev) to signup for our production-ready hosted and self-hosted options.
 
 _👇 Click the image for a short video:_
-<a href="https://raw.githubusercontent.com/itsderek23/finchvox/refs/heads/main/docs/demo.gif" target="_blank"><img src="./docs/screenshot.png" /></a>
+<a href="https://github.com/user-attachments/assets/f093e764-82ae-41cb-9089-4e2d19c7867f" target="_blank"><img src="./docs/screenshot.png" /></a>
 
 ## Table of Contents
 
@@ -15,11 +17,12 @@ _👇 Click the image for a short video:_
 - [Configuration](#configuration)
 - [Usage](#usage---finchvox-server)
 - [Troubleshooting](#troubleshooting)
+- [Telemetry](#telemetry)
 
 ## Prerequisites
 
 - Python 3.10 or higher
-- A Pipecat Voice AI application
+- Pipecat 0.0.68 or higher
 
 ## Installation
 
@@ -95,3 +98,26 @@ uv run finchvox --help
 
 1. Check collector is running: Look for "OTLP collector listening on port 4317" log message
 2. Verify client endpoint: Ensure Pipecat is configured to send to `http://localhost:4317`
+
+## Telemetry
+
+FinchVox collects minimal, anonymous usage telemetry to help improve the project. No personal data, IP addresses, or session content is collected.
+
+**What's collected:**
+
+- Event type (`server_start`, `session_ingest`, `session_view`)
+- FinchVox version
+- Operating system (macOS, Linux, or Windows)
+- Timestamp
+
+**Disable telemetry:**
+
+```bash
+finchvox start --telemetry false
+```
+
+Or set the environment variable:
+
+```bash
+export FINCHVOX_TELEMETRY=false
+```

@@ -1,5 +1,7 @@
 from loguru import logger
-from opentelemetry.proto.collector.logs.v1.logs_service_pb2_grpc import LogsServiceServicer
+from opentelemetry.proto.collector.logs.v1.logs_service_pb2_grpc import (
+    LogsServiceServicer,
+)
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
     ExportLogsServiceResponse,
     ExportLogsPartialSuccess,
@@ -26,15 +28,13 @@ class LogCollectorServicer(LogsServiceServicer):
             logger.info(f"Processed {log_count} log records")
             return ExportLogsServiceResponse(
                 partial_success=ExportLogsPartialSuccess(
-                    rejected_log_records=0,
-                    error_message=""
+                    rejected_log_records=0, error_message=""
                 )
             )
         except Exception as e:
             logger.error(f"Error processing logs: {e}", exc_info=True)
             return ExportLogsServiceResponse(
                 partial_success=ExportLogsPartialSuccess(
-                    rejected_log_records=0,
-                    error_message=str(e)
+                    rejected_log_records=0, error_message=str(e)
                 )
             )

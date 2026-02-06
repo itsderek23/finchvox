@@ -5,7 +5,6 @@ from finchvox.adapters import (
     get_adapter,
     PipecatAdapter,
     LiveKitAdapter,
-    SpanTypeConfig,
 )
 
 
@@ -27,7 +26,9 @@ class TestDetectPlatform:
         spans = [
             {
                 "name": "some_span",
-                "attributes": [{"key": "lk.transcript", "value": {"string_value": "hello"}}],
+                "attributes": [
+                    {"key": "lk.transcript", "value": {"string_value": "hello"}}
+                ],
             }
         ]
         assert detect_platform(spans) == "livekit"
@@ -43,7 +44,12 @@ class TestGetAdapter:
         assert isinstance(adapter, PipecatAdapter)
 
     def test_returns_livekit_adapter_for_livekit_spans(self):
-        spans = [{"name": "agent_session", "instrumentation_scope": {"name": "livekit-agents"}}]
+        spans = [
+            {
+                "name": "agent_session",
+                "instrumentation_scope": {"name": "livekit-agents"},
+            }
+        ]
         adapter = get_adapter(spans)
         assert isinstance(adapter, LiveKitAdapter)
 
@@ -87,19 +93,29 @@ class TestPipecatAdapter:
         assert config.css_class == "bar-default"
 
     def test_get_transcript(self, adapter):
-        span = {"attributes": [{"key": "transcript", "value": {"string_value": "Hello world"}}]}
+        span = {
+            "attributes": [
+                {"key": "transcript", "value": {"string_value": "Hello world"}}
+            ]
+        }
         assert adapter.get_transcript(span) == "Hello world"
 
     def test_get_output_text(self, adapter):
-        span = {"attributes": [{"key": "text", "value": {"string_value": "Response text"}}]}
+        span = {
+            "attributes": [{"key": "text", "value": {"string_value": "Response text"}}]
+        }
         assert adapter.get_output_text(span) == "Response text"
 
     def test_get_output_text_fallback_to_output(self, adapter):
-        span = {"attributes": [{"key": "output", "value": {"string_value": "Output text"}}]}
+        span = {
+            "attributes": [{"key": "output", "value": {"string_value": "Output text"}}]
+        }
         assert adapter.get_output_text(span) == "Output text"
 
     def test_get_ttfb(self, adapter):
-        span = {"attributes": [{"key": "metrics.ttfb", "value": {"double_value": 0.234}}]}
+        span = {
+            "attributes": [{"key": "metrics.ttfb", "value": {"double_value": 0.234}}]
+        }
         assert adapter.get_ttfb(span) == 0.234
 
     def test_get_turn_span_names(self, adapter):
@@ -142,7 +158,7 @@ class TestLiveKitAdapter:
     def test_get_span_config_user_turn(self, adapter):
         config = adapter.get_span_config("user_turn")
         assert config.display_name == "USER_TURN"
-        assert config.category == "turn"
+        assert config.category == "stt"
 
     def test_get_span_config_agent_turn(self, adapter):
         config = adapter.get_span_config("agent_turn")
@@ -166,15 +182,25 @@ class TestLiveKitAdapter:
         assert config.category == "tts"
 
     def test_get_transcript_lk_transcript(self, adapter):
-        span = {"attributes": [{"key": "lk.transcript", "value": {"string_value": "Hello"}}]}
+        span = {
+            "attributes": [{"key": "lk.transcript", "value": {"string_value": "Hello"}}]
+        }
         assert adapter.get_transcript(span) == "Hello"
 
     def test_get_transcript_lk_user_text(self, adapter):
-        span = {"attributes": [{"key": "lk.user_text", "value": {"string_value": "User said"}}]}
+        span = {
+            "attributes": [
+                {"key": "lk.user_text", "value": {"string_value": "User said"}}
+            ]
+        }
         assert adapter.get_transcript(span) == "User said"
 
     def test_get_output_text_lk_response(self, adapter):
-        span = {"attributes": [{"key": "lk.response.text", "value": {"string_value": "Response"}}]}
+        span = {
+            "attributes": [
+                {"key": "lk.response.text", "value": {"string_value": "Response"}}
+            ]
+        }
         assert adapter.get_output_text(span) == "Response"
 
     def test_get_ttfb_lk(self, adapter):

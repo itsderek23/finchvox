@@ -81,7 +81,7 @@
                                 <span>Raw Data</span>
                             </span>
                         </a>
-                        <a :href="'/api/sessions/' + sessionId + '/audio/download'" download class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="Download Audio">
+                        <a :href="'/api/sessions/' + sessionId + '/download'" download class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer no-underline" title="Download Session">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                             </svg>
@@ -122,7 +122,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                         </svg>
                         <span x-show="isPolling">Waiting for audio data... (session is live)</span>
-                        <span x-show="!isPolling">No audio data available. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.</span>
+                        <span x-show="!isPolling">No audio data available. See the <a href="https://github.com/finchvox/finchvox#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.</span>
                     </div>
                 </div>
 
@@ -144,7 +144,7 @@
             </section>
 
                 <!-- View Tabs -->
-                <div class="flex gap-6 px-8 py-2 bg-[#050507]">
+                <div class="flex gap-6 px-8 py-4 bg-[#050507]">
                     <button @click="switchView('logs')"
                             class="pb-1 text-sm font-medium transition-colors border-b-2"
                             :class="selectedView === 'logs' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
@@ -165,12 +165,17 @@
                             :class="selectedView === 'metrics' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
                         Metrics
                     </button>
+                    <button @click="switchView('environment'); loadEnvironmentIfNeeded()"
+                            class="pb-1 text-sm font-medium transition-colors border-b-2"
+                            :class="selectedView === 'environment' ? 'border-amber-500 text-white' : 'border-transparent text-white/50 hover:text-white/70'">
+                        Environment
+                    </button>
                 </div>
             </div><!-- End fixed-container -->
 
     <!-- Trace View -->
-    <main x-show="selectedView === 'trace'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-362px)]">
+    <main x-show="selectedView === 'trace'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-378px)]">
 
             <!-- Swimlane Body (Scrollable) -->
             <div class="flex-1 overflow-y-auto overflow-x-visible space-y-2">
@@ -189,7 +194,7 @@
                                      @click="selectSpan(span, true)"
                                      @mouseenter="highlightSpan(span)"
                                      @mouseleave="unhighlightSpan()">
-                                    <span x-show="!hasOverlappingLabels(spanType)" class="text-white/85 text-[10px] font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
+                                    <span x-show="!shouldHideLabel(span)" class="text-white/85 text-xs font-mono whitespace-nowrap px-1.5" x-html="formatBarDuration(span)"></span>
                                 </div>
                             </template>
                         </div>
@@ -201,10 +206,10 @@
     </main>
 
     <!-- Logs View -->
-    <main x-show="selectedView === 'logs'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
+    <main x-show="selectedView === 'logs'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-348px)]">
             <!-- Filter Bar -->
-            <div class="flex items-center justify-between px-8 py-2 border-b border-white/10 shrink-0">
+            <div class="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
                 <div class="flex items-center gap-4">
                     <div class="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
@@ -283,8 +288,8 @@
     </main>
 
     <!-- Conversation View -->
-    <main x-show="selectedView === 'conversation'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-332px)]">
+    <main x-show="selectedView === 'conversation'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-hidden overflow-x-visible flex flex-col h-[calc(100vh-348px)]">
             <!-- Loading state -->
             <div x-show="conversationLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading conversation...</span>
@@ -336,8 +341,8 @@
     </main>
 
     <!-- Metrics View -->
-    <main x-show="selectedView === 'metrics'" class="flex-1 mt-[322px]">
-        <div class="overflow-y-auto flex flex-col h-[calc(100vh-332px)] px-8 py-4">
+    <main x-show="selectedView === 'metrics'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-auto flex flex-col h-[calc(100vh-348px)] px-8 py-4">
             <!-- Loading state -->
             <div x-show="metricsLoading" class="flex-1 flex items-center justify-center">
                 <span class="text-white/40">Loading metrics...</span>
@@ -354,8 +359,24 @@
             </div>
 
             <!-- Charts Grid -->
-            <div x-show="!metricsLoading && !metricsError && metricsData && metricsData.services && metricsData.services.length > 0"
+            <div x-show="!metricsLoading && !metricsError && metricsData && (metricsData.services?.length > 0 || metricsData.user_bot_latency?.data_points?.length > 0)"
                  class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- User-Bot Latency Chart -->
+                <template x-if="metricsData?.user_bot_latency?.data_points?.length > 0">
+                    <div class="bg-white/[0.02] rounded-lg border border-white/10 p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm font-mono uppercase text-span-turn">USER-BOT LATENCY</span>
+                            <div class="flex gap-4 text-xs text-white/50">
+                                <span>AVG <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.avg_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p50 <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.p50_ms)"></span><span class="font-mono">ms</span></span>
+                                <span>p95 <span class="text-white/70 font-mono" x-text="formatStatValue(getUserBotLatencyStats()?.p95_ms)"></span><span class="font-mono">ms</span></span>
+                            </div>
+                        </div>
+                        <div style="height: 200px;">
+                            <canvas id="user-bot-latency-chart"></canvas>
+                        </div>
+                    </div>
+                </template>
                 <template x-for="service in metricsData?.services || []" :key="service">
                     <div class="bg-white/[0.02] rounded-lg border border-white/10 p-4">
                         <!-- Header with service name and stats -->
@@ -379,6 +400,57 @@
                         </div>
                     </div>
                 </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Environment View -->
+    <main x-show="selectedView === 'environment'" class="flex-1 mt-[338px]">
+        <div class="overflow-y-auto flex flex-col h-[calc(100vh-348px)] px-8 py-4">
+            <!-- Loading state -->
+            <div x-show="environmentLoading" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40">Loading environment...</span>
+            </div>
+
+            <!-- Error state -->
+            <div x-show="!environmentLoading && environmentError" class="flex-1 flex items-center justify-center">
+                <span class="text-white/40" x-text="environmentError"></span>
+            </div>
+
+            <!-- Content -->
+            <div x-show="!environmentLoading && !environmentError && environmentData" class="space-y-6">
+                <!-- Operating System -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Operating System</h3>
+                    <p class="text-white text-sm font-mono" x-text="formatOS()"></p>
+                </div>
+
+                <!-- Python -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Python</h3>
+                    <p class="text-white text-sm font-mono" x-text="formatPython()"></p>
+                </div>
+
+                <!-- Python Packages -->
+                <div>
+                    <h3 class="text-white/40 font-semibold text-xs uppercase tracking-wide mb-2">Python Packages</h3>
+                    <table class="w-full table-fixed">
+                        <thead>
+                            <tr class="border-b border-white/10 text-white/40 text-xs font-semibold">
+                                <th class="w-1/2 px-4 py-2 text-left font-semibold">Package</th>
+                                <th class="w-1/2 px-4 py-2 text-left font-semibold">Version</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(version, name) in getSortedPackages()" :key="name">
+                                <tr class="border-b border-white/5">
+                                    <td class="px-4 py-1.5 text-white text-xs font-mono" x-text="name"></td>
+                                    <td class="px-4 py-1.5 text-white/70 text-xs font-mono" x-text="version"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -423,6 +495,10 @@
                     <div class="grid grid-cols-[150px_1fr] gap-4">
                         <label class="text-white/40 font-semibold text-xs">End time</label>
                         <span class="text-white text-xs" x-text="formatTimestamp(selectedSpan?.end_time_unix_nano)"></span>
+                    </div>
+                    <div class="grid grid-cols-[150px_1fr] gap-4" x-show="spanHasToolCalls(selectedSpan)">
+                        <label class="text-white/40 font-semibold text-xs">Tool Calls</label>
+                        <span class="text-white text-xs" x-text="getToolCallNames(selectedSpan)"></span>
                     </div>
                     <div class="grid grid-cols-[150px_1fr] gap-4" x-show="wasInterrupted(selectedSpan) !== null">
                         <label class="text-white/40 font-semibold text-xs">Interrupted?</label>
@@ -486,6 +562,18 @@
                     <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="formatAttributeValue(selectedSpan, 'lk.response.text')"></pre>
                 </div>
 
+                <!-- Turn User Transcript (Pipecat) -->
+                <div x-show="selectedSpan?.name === 'turn' && getTurnUserTranscript(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">User</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getTurnUserTranscript(selectedSpan)"></pre>
+                </div>
+
+                <!-- Turn Bot Response (Pipecat) -->
+                <div x-show="selectedSpan?.name === 'turn' && getTurnBotText(selectedSpan)">
+                    <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">Agent</label>
+                    <pre class="bg-[#050507] p-2 overflow-x-auto font-mono text-[13px] leading-relaxed text-emerald-500 border border-white/10 mb-4 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words" x-text="getTurnBotText(selectedSpan)"></pre>
+                </div>
+
                 <!-- Raw Span JSON -->
                 <div>
                     <label class="text-white/40 font-semibold text-xs mb-2 flex justify-between items-center">
@@ -515,7 +603,18 @@
            x-transition:leave-end="translate-x-full">
             <div class="flex justify-between items-center py-2 px-8 border-b border-white/10 sticky top-0 z-10 bg-[#050507]">
                 <h3 class="text-sm font-semibold tracking-wide">Inspect log</h3>
-                <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
+                <div class="flex items-center gap-1">
+                    <button x-show="logHasSpan()"
+                            @click="jumpToSpanFromLog()"
+                            class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer"
+                            title="View in Trace">
+                        <span>Trace</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
+                        </svg>
+                    </button>
+                    <button @click="closeLogPanel()" class="bg-transparent border-none text-white/70 text-sm cursor-pointer w-10 h-10 flex items-center justify-center rounded transition-all hover:bg-white/[0.02] hover:text-white" title="ESC">✕</button>
+                </div>
             </div>
             <div class="p-8" x-show="selectedLog">
                 <div class="grid gap-4 mb-8">
@@ -540,7 +639,7 @@
                 <!-- Message -->
                 <div class="mb-6">
                     <label class="text-white/40 font-semibold text-xs mb-2 block">Message</label>
-                    <div class="text-white text-sm bg-[#0a0a0c] p-3 rounded border border-white/10 whitespace-pre-wrap break-words font-mono" x-text="getLogBody(selectedLog)"></div>
+                    <div class="text-emerald-500 text-[13px] bg-[#050507] p-2 border border-white/10 whitespace-pre-wrap break-words font-mono" x-text="getLogBody(selectedLog)"></div>
                 </div>
 
                 <!-- Raw JSON -->
@@ -567,6 +666,7 @@
     <script src="/js/logs_view.js"></script>
     <script src="/js/conversation.js"></script>
     <script src="/js/metrics_view.js"></script>
+    <script src="/js/environment_view.js"></script>
     <script src="/js/session_detail.js"></script>
 </body>
 </html>

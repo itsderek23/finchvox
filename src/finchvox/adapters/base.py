@@ -35,7 +35,9 @@ class BaseTraceAdapter(ABC):
     def get_turn_span_names(self) -> list[str]:
         pass
 
-    def _get_attribute(self, span: dict, key: str) -> Optional[str | bool | int | float]:
+    def _get_attribute(
+        self, span: dict, key: str
+    ) -> Optional[str | bool | int | float]:
         attrs = span.get("attributes", [])
         for attr in attrs:
             if attr.get("key") == key:

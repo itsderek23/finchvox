@@ -54,7 +54,7 @@ button:focus-visible {
    ========================================== */
 .timeline-bar {
     position: absolute;
-    height: 20px;
+    height: 24px;
     min-width: 1px;
     transition: all 0.15s ease;
     display: flex;

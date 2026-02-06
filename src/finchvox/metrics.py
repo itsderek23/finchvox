@@ -36,7 +36,30 @@ class TTFBSeries:
         return {
             "service": self.service,
             "data_points": [dp.to_dict() for dp in self.data_points],
-            "stats": self.stats.to_dict()
+            "stats": self.stats.to_dict(),
+        }
+
+
+@dataclass
+class UserBotLatencyDataPoint:
+    timestamp_ms: float
+    relative_time_ms: float
+    latency_ms: float
+    span_id: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class UserBotLatencySeries:
+    data_points: list[UserBotLatencyDataPoint]
+    stats: TTFBStats
+
+    def to_dict(self) -> dict:
+        return {
+            "data_points": [dp.to_dict() for dp in self.data_points],
+            "stats": self.stats.to_dict(),
         }
 
 
@@ -47,6 +70,7 @@ class Metrics:
         self.spans = spans
         self._session_start_ms: float | None = None
         self._ttfb_series: dict[str, TTFBSeries] | None = None
+        self._user_bot_latency_series: UserBotLatencySeries | None = None
 
     def _find_min_start_nano(self) -> int | None:
         min_start = None
@@ -89,7 +113,7 @@ class Metrics:
             max_ms=max(values),
             p50_ms=sorted_vals[p50_idx],
             p95_ms=sorted_vals[p95_idx],
-            count=n
+            count=n,
         )
 
     def _extract_ttfb_data_point(self, span: dict) -> TTFBDataPoint | None:
@@ -107,7 +131,7 @@ class Metrics:
             timestamp_ms=timestamp_ms,
             relative_time_ms=timestamp_ms - self.session_start_ms,
             ttfb_ms=ttfb_seconds * 1000,
-            span_id=span.get("span_id_hex", "")
+            span_id=span.get("span_id_hex", ""),
         )
 
     def _collect_data_points(self) -> dict[str, list[TTFBDataPoint]]:
@@ -122,7 +146,9 @@ class Metrics:
                 series[category].append(data_point)
         return series
 
-    def _build_series(self, service: str, data_points: list[TTFBDataPoint]) -> TTFBSeries:
+    def _build_series(
+        self, service: str, data_points: list[TTFBDataPoint]
+    ) -> TTFBSeries:
         data_points.sort(key=lambda dp: dp.timestamp_ms)
         stats = self._compute_stats([dp.ttfb_ms for dp in data_points])
         return TTFBSeries(service=service, data_points=data_points, stats=stats)
@@ -141,9 +167,55 @@ class Metrics:
         self._ttfb_series = result
         return result
 
+    def _extract_user_bot_latency_data_point(
+        self, span: dict
+    ) -> UserBotLatencyDataPoint | None:
+        latency_seconds = self._get_attribute(span, "turn.user_bot_latency_seconds")
+        if latency_seconds is None:
+            return None
+
+        start_nano = int(span.get("start_time_unix_nano", 0))
+        timestamp_ms = start_nano / 1_000_000
+
+        return UserBotLatencyDataPoint(
+            timestamp_ms=timestamp_ms,
+            relative_time_ms=timestamp_ms - self.session_start_ms,
+            latency_ms=latency_seconds * 1000,
+            span_id=span.get("span_id_hex", ""),
+        )
+
+    def _collect_latency_data_points(self) -> list[UserBotLatencyDataPoint]:
+        data_points = []
+        for span in self.spans:
+            if span.get("name") != "turn":
+                continue
+            data_point = self._extract_user_bot_latency_data_point(span)
+            if data_point:
+                data_points.append(data_point)
+        return data_points
+
+    def get_user_bot_latency_series(self) -> UserBotLatencySeries | None:
+        if self._user_bot_latency_series is not None:
+            return self._user_bot_latency_series
+
+        data_points = self._collect_latency_data_points()
+        if not data_points:
+            return None
+
+        data_points.sort(key=lambda dp: dp.timestamp_ms)
+        stats = self._compute_stats([dp.latency_ms for dp in data_points])
+        self._user_bot_latency_series = UserBotLatencySeries(
+            data_points=data_points, stats=stats
+        )
+        return self._user_bot_latency_series
+
     def to_dict(self) -> dict:
         series = self.get_ttfb_series()
+        user_bot_latency = self.get_user_bot_latency_series()
         return {
             "series": {s: series[s].to_dict() for s in series},
-            "services": list(series.keys())
+            "services": list(series.keys()),
+            "user_bot_latency": user_bot_latency.to_dict()
+            if user_bot_latency
+            else None,
         }

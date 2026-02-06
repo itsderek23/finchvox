@@ -5,7 +5,7 @@ import uvicorn
 from concurrent import futures
 from loguru import logger
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
-    add_TraceServiceServicer_to_server
+    add_TraceServiceServicer_to_server,
 )
 from .service import TraceCollectorServicer
 from .writer import SpanWriter
@@ -13,7 +13,15 @@ from .logs_writer import LogWriter
 from .exceptions_writer import ExceptionsWriter
 from .audio_handler import AudioHandler
 from .http_server import create_app
-from .config import GRPC_PORT, HTTP_PORT, MAX_WORKERS, TRACES_DIR, AUDIO_DIR, LOGS_DIR, EXCEPTIONS_DIR
+from .config import (
+    GRPC_PORT,
+    HTTP_PORT,
+    MAX_WORKERS,
+    TRACES_DIR,
+    AUDIO_DIR,
+    LOGS_DIR,
+    EXCEPTIONS_DIR,
+)
 
 
 class CollectorServer:
@@ -42,7 +50,7 @@ class CollectorServer:
         add_TraceServiceServicer_to_server(servicer, self.grpc_server)
 
         # Bind to port (insecure for PoC - no TLS)
-        self.grpc_server.add_insecure_port(f'[::]:{GRPC_PORT}')
+        self.grpc_server.add_insecure_port(f"[::]:{GRPC_PORT}")
 
         # Start serving
         self.grpc_server.start()

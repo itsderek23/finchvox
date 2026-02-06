@@ -26,22 +26,53 @@
 <body class="bg-[#050507] text-white min-h-screen flex flex-col overflow-y-auto overflow-x-hidden text-sm font-sans" x-data="sessionsListApp()" x-init="init()">
     <div class="py-3.5 px-8 border-b border-white/10 flex items-center gap-2.5 bg-[#050507]">
         <img src="/images/finchvox-logo.png" alt="FinchVox Logo" class="h-5 w-auto">
-        <span class="text-white/70">Sessions</span> <span>/</span> <span x-text="`${sessions.length} sessions`"></span>
+        <span class="text-white/70">Sessions</span>
     </div>
+
     <main class="flex-1 overflow-auto px-8 pb-16">
-        <div x-show="sessions.length === 0" class="flex items-center gap-3 p-4 px-5 mt-24 mx-0 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
+        <div class="flex items-center justify-between mt-6 mb-4">
+            <h1 class="text-white text-xl font-semibold" x-text="`${sessions.length} sessions`"></h1>
+            <button @click="showUploadSection = !showUploadSection"
+                    class="flex items-center gap-2 bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200 cursor-pointer"
+                    :class="{ 'bg-amber-500/20 text-amber-400 border-amber-500/30': showUploadSection }">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span>Upload</span>
+            </button>
+        </div>
+
+        <div x-show="showUploadSection" x-transition class="px-4 py-4 mb-4 border border-white/10 rounded-lg bg-white/[0.02]">
+        <form @submit.prevent="uploadSession" class="flex items-center gap-4">
+            <input type="file"
+                   accept=".zip"
+                   @change="uploadFile = $event.target.files[0]"
+                   class="text-sm text-white/70 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border file:border-white/10 file:text-xs file:font-mono file:bg-white/5 file:text-white/40 hover:file:bg-white/10 hover:file:text-white/60 file:cursor-pointer file:transition-all"
+                   :disabled="uploading">
+            <button type="submit"
+                    :disabled="!uploadFile || uploading"
+                    class="flex items-center gap-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-3 py-1.5 text-xs font-mono transition-all duration-200"
+                    :class="(!uploadFile || uploading) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-amber-500/30 cursor-pointer'">
+                <span x-show="!uploading">Upload Session</span>
+                <span x-show="uploading">Uploading...</span>
+            </button>
+            <span x-show="uploadError" class="text-red-400 text-xs" x-text="uploadError"></span>
+        </form>
+        </div>
+
+        <div x-show="sessions.length === 0" class="flex items-center gap-3 p-4 px-5 mt-20 mx-0 mb-4 bg-white/[0.02] border border-white/10 rounded-sm text-orange-400">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
             <span>
-                Is this thing on? No sessions have been found in the data directory. See the <a href="https://github.com/itsderek23/finchvox/README.md#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
+                Is this thing on? No sessions have been found in the data directory. See the <a href="https://github.com/finchvox/finchvox#troubleshooting" target="_blank" class="text-orange-400 underline hover:text-orange-300 transition-colors">troubleshooting guide</a>.
                 <div x-show="dataDir && dataDir.length > 0" class="block mt-2 text-white/70">
                     Data directory: <span class="font-mono text-xs" x-text="dataDir"></span>
                 </div>
             </span>
         </div>
 
-        <div class="bg-white/[0.02] rounded-lg border border-white/10 overflow-hidden mt-4" x-show="sessions.length > 0">
+        <div class="bg-white/[0.02] rounded-lg border border-white/10 overflow-hidden" x-show="sessions.length > 0">
         <table class="w-full border-collapse">
             <thead>
                 <tr class="border-b border-white/10 text-white/50 text-left">

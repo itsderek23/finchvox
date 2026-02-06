@@ -1,7 +1,6 @@
 import asyncio
 import io
 import json
-import time
 import wave
 from datetime import datetime
 from typing import Optional
@@ -28,21 +27,51 @@ from pipecat.utils.tracing.conversation_context_provider import (
 )
 
 
-MAX_SILENCE_SECONDS = 60.0
-
-
 def _is_finchvox_initialized() -> bool:
     import finchvox
+
     return finchvox._initialized
 
 
 class FinchvoxProcessor(FrameProcessor):
+    """Pipecat processor that captures conversation audio and uploads it to Finchvox.
+
+    Place this processor after ``transport.output()`` in your pipeline. It records
+    both user and bot audio in stereo WAV chunks and uploads them to the Finchvox
+    collector for playback and debugging in the web UI.
+
+    Requires ``finchvox.init()`` to be called before the pipeline starts and
+    ``enable_tracing=True`` on the ``PipelineTask``.
+
+    Example::
+
+        import finchvox
+
+        finchvox.init(service_name="my-bot")
+
+        pipeline = Pipeline([
+            transport.input(),
+            stt,
+            llm,
+            tts,
+            transport.output(),
+            finchvox.FinchvoxProcessor(),
+        ])
+    """
+
     def __init__(
         self,
         endpoint: str = "http://localhost:3000",
         chunk_duration_seconds: int = 5,
         sample_rate: int = 16000,
     ):
+        """Create a new FinchvoxProcessor.
+
+        Args:
+            endpoint: URL of the Finchvox HTTP server.
+            chunk_duration_seconds: Duration of each audio chunk uploaded.
+            sample_rate: Audio sample rate in Hz.
+        """
         super().__init__()
         self._endpoint = endpoint
         self._chunk_duration = chunk_duration_seconds
@@ -75,10 +104,16 @@ class FinchvoxProcessor(FrameProcessor):
         await self.push_frame(frame, direction)
 
     async def _process_audio_frame(self, frame: Frame, direction: FrameDirection):
-        if isinstance(frame, (InputAudioRawFrame, OutputAudioRawFrame)):
-            self._cap_silence_timestamps()
-
-        if isinstance(frame, (StartFrame, InputAudioRawFrame, OutputAudioRawFrame, EndFrame, CancelFrame)):
+        if isinstance(
+            frame,
+            (
+                StartFrame,
+                InputAudioRawFrame,
+                OutputAudioRawFrame,
+                EndFrame,
+                CancelFrame,
+            ),
+        ):
             await self._audio_buffer.process_frame(frame, direction)
 
         if isinstance(frame, InputAudioRawFrame):
@@ -91,18 +126,6 @@ class FinchvoxProcessor(FrameProcessor):
                     f"user_buffer={user_mb:.2f}MB, "
                     f"bot_buffer={bot_mb:.2f}MB"
                 )
-
-    def _cap_silence_timestamps(self):
-        now = time.time()
-        min_timestamp = now - MAX_SILENCE_SECONDS
-        if self._audio_buffer._last_user_frame_at < min_timestamp:
-            trimmed = now - self._audio_buffer._last_user_frame_at
-            self._audio_buffer._last_user_frame_at = min_timestamp
-            logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
-        if self._audio_buffer._last_bot_frame_at < min_timestamp:
-            trimmed = now - self._audio_buffer._last_bot_frame_at
-            self._audio_buffer._last_bot_frame_at = min_timestamp
-            logger.info(f"Trimmed {trimmed:.1f}s silence gap to {MAX_SILENCE_SECONDS:.0f}s max")
 
     async def _handle_start_frame(self, frame: StartFrame):
         if not _is_finchvox_initialized():

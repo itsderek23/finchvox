@@ -1,6 +1,23 @@
 # Development Guide
 
 
+## Setup
+
+### Install Pre-commit Hooks
+
+```bash
+uv run pre-commit install
+```
+
+This installs a git hook that runs ruff (linting and formatting) before each commit.
+
+To run manually:
+
+```bash
+uv run scripts/fix-ruff.sh
+```
+
+
 ## Testing
 
 ### Run Automated Tests

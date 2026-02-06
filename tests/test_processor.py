@@ -41,7 +41,9 @@ def capture_logs():
 
 
 @pytest.mark.asyncio
-async def test_pipeline_continues_when_init_not_called(reset_finchvox_state, mock_setup_info, capture_logs):
+async def test_pipeline_continues_when_init_not_called(
+    reset_finchvox_state, mock_setup_info, capture_logs
+):
     finchvox._initialized = False
 
     processor = FinchvoxProcessor()
@@ -66,7 +68,9 @@ async def test_pipeline_continues_when_init_not_called(reset_finchvox_state, moc
 
 
 @pytest.mark.asyncio
-async def test_pipeline_continues_when_tracing_disabled(reset_finchvox_state, mock_setup_info, capture_logs):
+async def test_pipeline_continues_when_tracing_disabled(
+    reset_finchvox_state, mock_setup_info, capture_logs
+):
     finchvox._initialized = True
 
     processor = FinchvoxProcessor()
@@ -91,7 +95,9 @@ async def test_pipeline_continues_when_tracing_disabled(reset_finchvox_state, mo
 
 
 @pytest.mark.asyncio
-async def test_pipeline_continues_when_collector_unreachable(reset_finchvox_state, mock_setup_info, capture_logs):
+async def test_pipeline_continues_when_collector_unreachable(
+    reset_finchvox_state, mock_setup_info, capture_logs
+):
     finchvox._initialized = True
 
     processor = FinchvoxProcessor(endpoint="http://localhost:59999")
@@ -132,14 +138,16 @@ async def test_pipeline_continues_when_collector_unreachable(reset_finchvox_stat
 
     assert success is False
     log_after = capture_logs.getvalue()
-    new_logs = log_after[len(log_before):]
+    new_logs = log_after[len(log_before) :]
     assert "Could not reach finchvox collector" not in new_logs
 
     await processor.cleanup()
 
 
 @pytest.mark.asyncio
-async def test_end_frame_flows_through_when_disabled(reset_finchvox_state, mock_setup_info):
+async def test_end_frame_flows_through_when_disabled(
+    reset_finchvox_state, mock_setup_info
+):
     finchvox._initialized = False
 
     processor = FinchvoxProcessor()

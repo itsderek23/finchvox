@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
+from opentelemetry import trace as otel_trace
+from opentelemetry.sdk.trace import TracerProvider
+
+from finchvox.environment import EnvironmentSpanProcessor, capture_environment
 
 if TYPE_CHECKING:
     from opentelemetry.sdk.trace import TracerProvider
@@ -23,6 +27,22 @@ def init(
     log_modules: list[str] | None = None,
     app_root: str | Path | None = None,
 ) -> None:
+    """Initialize Finchvox tracing and log capture for a Pipecat application.
+
+    Must be called before the Pipecat pipeline starts. Sets up OpenTelemetry
+    trace export to the Finchvox server and optionally bridges application
+    logs (stdlib logging and loguru) into the trace context.
+
+    Args:
+        service_name: Name identifying this application in traces.
+        endpoint: gRPC endpoint of the Finchvox server.
+        insecure: Use insecure (non-TLS) gRPC connection.
+        capture_logs: Bridge application logs into OpenTelemetry traces.
+        log_modules: Additional module prefixes whose logs should be captured
+            (e.g. ``["myapp."]``). Pipecat and finchvox logs are always captured.
+        app_root: Root directory of the application source. Logs from files
+            under this path are captured automatically. Defaults to ``cwd()``.
+    """
     global _initialized, _allowed_log_modules, _app_root
 
     if _initialized:
@@ -44,11 +64,21 @@ def init(
     exporter = OTLPSpanExporter(endpoint=endpoint, insecure=insecure)
     setup_tracing(service_name=service_name, exporter=exporter)
 
+    capture_environment()
+
+    provider = otel_trace.get_tracer_provider()
+    if isinstance(provider, TracerProvider):
+        http_endpoint = endpoint.replace(":4317", ":3000")
+        env_processor = EnvironmentSpanProcessor(endpoint=http_endpoint)
+        provider.add_span_processor(env_processor)
+
     if capture_logs:
         _setup_log_capture(service_name, endpoint, insecure)
 
     _initialized = True
-    logger.info(f"Finchvox v{version('finchvox')} initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}")
+    logger.info(
+        f"Finchvox v{version('finchvox')} initialized with service_name='{service_name}', endpoint='{endpoint}', capture_logs={capture_logs}"
+    )
 
 
 def _is_allowed_source(module: str, pathname: str | None) -> bool:
@@ -106,6 +136,7 @@ class TraceContextLoggingHandler(logging.Handler):
         ctx = _get_pipecat_context()
         if ctx:
             from opentelemetry.context import attach, detach
+
             token = attach(ctx)
             try:
                 self._otel_handler.emit(record)
@@ -150,10 +181,14 @@ def _get_pipecat_context():
     """
     try:
         from pipecat.utils.tracing.turn_context_provider import get_current_turn_context
+
         ctx = get_current_turn_context()
         if ctx:
             return ctx
-        from pipecat.utils.tracing.conversation_context_provider import get_current_conversation_context
+        from pipecat.utils.tracing.conversation_context_provider import (
+            get_current_conversation_context,
+        )
+
         return get_current_conversation_context()
     except ImportError:
         return None
@@ -196,6 +231,7 @@ def _setup_loguru_bridge() -> None:
 
         if turn_context:
             from opentelemetry.context import attach, detach
+
             token = attach(turn_context)
             try:
                 stdlib_logger.handle(log_record)
@@ -207,7 +243,7 @@ def _setup_loguru_bridge() -> None:
     loguru_logger.configure(patcher=log_patcher)
 
 
-from finchvox.processor import FinchvoxProcessor
+from finchvox.processor import FinchvoxProcessor  # noqa: E402
 
 
 def init_livekit(

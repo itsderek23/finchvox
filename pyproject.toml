@@ -1,6 +1,6 @@
 [project]
 name = "finchvox"
-version = "0.0.7"
+version = "0.0.12"
 description = "Voice AI observability dev tool for Pipecat"
 readme = "README.md"
 license = "MIT"
@@ -30,6 +30,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
+    "pre-commit>=4.0.0",
     "ruff>=0.14.10",
     "twine>=6.2.0",
 ]

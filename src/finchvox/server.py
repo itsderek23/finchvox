@@ -14,10 +14,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from loguru import logger
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
-    add_TraceServiceServicer_to_server
+    add_TraceServiceServicer_to_server,
 )
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2_grpc import (
-    add_LogsServiceServicer_to_server
+    add_LogsServiceServicer_to_server,
 )
 
 from finchvox.collector.service import TraceCollectorServicer
@@ -31,8 +31,9 @@ from finchvox.collector.config import (
     GRPC_PORT,
     MAX_WORKERS,
     get_default_data_dir,
-    get_sessions_base_dir
+    get_sessions_base_dir,
 )
+from finchvox import telemetry
 
 
 class UnifiedServer:
@@ -45,7 +46,13 @@ class UnifiedServer:
     - Web UI and REST API for viewing traces (at root /)
     """
 
-    def __init__(self, port: int = 3000, grpc_port: int = GRPC_PORT, host: str = "0.0.0.0", data_dir: Path = None):
+    def __init__(
+        self,
+        port: int = 3000,
+        grpc_port: int = GRPC_PORT,
+        host: str = "0.0.0.0",
+        data_dir: Path = None,
+    ):
         """
         Initialize the unified server.
 
@@ -91,11 +98,7 @@ class UnifiedServer:
         register_ui_routes(app, self.data_dir)
 
         # Register collector routes with /collector prefix
-        register_collector_routes(
-            app,
-            self.audio_handler,
-            prefix="/collector"
-        )
+        register_collector_routes(app, self.audio_handler, prefix="/collector")
 
         return app
 
@@ -117,12 +120,14 @@ class UnifiedServer:
         add_LogsServiceServicer_to_server(log_servicer, self.grpc_server)
 
         # Bind to port (insecure for PoC - no TLS)
-        self.grpc_server.add_insecure_port(f'[::]:{self.grpc_port}')
+        self.grpc_server.add_insecure_port(f"[::]:{self.grpc_port}")
 
         # Start serving
         self.grpc_server.start()
         logger.info(f"OTLP collector listening on port {self.grpc_port}")
-        logger.info(f"Writing sessions to: {get_sessions_base_dir(self.data_dir).absolute()}")
+        logger.info(
+            f"Writing sessions to: {get_sessions_base_dir(self.data_dir).absolute()}"
+        )
 
     async def start_http(self):
         """Start the HTTP server using uvicorn."""
@@ -148,10 +153,10 @@ class UnifiedServer:
 
     async def start(self):
         """Start both gRPC and HTTP servers concurrently."""
-        # Start gRPC server
+        telemetry.send_event("server_start", dedupe=True)
+
         await self.start_grpc()
 
-        # Start HTTP server (this blocks until shutdown)
         await self.start_http()
 
     async def stop(self, grace_period: int = 5):
@@ -187,6 +192,7 @@ class UnifiedServer:
 
         Sets up signal handlers and runs the event loop until shutdown.
         """
+
         async def run_with_signals():
             loop = asyncio.get_running_loop()
 

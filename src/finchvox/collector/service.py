@@ -1,5 +1,7 @@
 from loguru import logger
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import TraceServiceServicer
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
+    TraceServiceServicer,
+)
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceResponse,
     ExportTracePartialSuccess,
@@ -28,8 +30,7 @@ class TraceCollectorServicer(TraceServiceServicer):
             logger.info(f"Successfully processed {span_count} spans={span_names}")
             return ExportTraceServiceResponse(
                 partial_success=ExportTracePartialSuccess(
-                    rejected_spans=0,
-                    error_message=""
+                    rejected_spans=0, error_message=""
                 )
             )
         except Exception as e:
@@ -38,6 +39,6 @@ class TraceCollectorServicer(TraceServiceServicer):
             return ExportTraceServiceResponse(
                 partial_success=ExportTracePartialSuccess(
                     rejected_spans=0,  # Could track actual failures
-                    error_message=str(e)
+                    error_message=str(e),
                 )
             )

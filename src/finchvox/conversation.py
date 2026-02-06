@@ -13,6 +13,35 @@ class Message:
         return asdict(self)
 
 
+@dataclass
+class MessageAccumulator:
+    role: str | None = None
+    texts: list[str] = None
+    span_ids: list[str] = None
+    timestamp: int = 0
+    first_span: dict | None = None
+
+    def __post_init__(self):
+        if self.texts is None:
+            self.texts = []
+        if self.span_ids is None:
+            self.span_ids = []
+
+    def has_content(self) -> bool:
+        return bool(self.texts and self.role)
+
+    def reset(self, role: str, text: str, span: dict):
+        self.role = role
+        self.texts = [text]
+        self.span_ids = [span.get("span_id_hex")]
+        self.timestamp = span.get("start_time_unix_nano", 0)
+        self.first_span = span
+
+    def append(self, text: str, span: dict):
+        self.texts.append(text)
+        self.span_ids.append(span.get("span_id_hex"))
+
+
 class Conversation:
     def __init__(self, spans: list[dict]):
         self.spans = spans
@@ -42,40 +71,19 @@ class Conversation:
                     return s
         return None
 
-    def _get_turn_spans(self) -> dict[str, list[dict]]:
-        turn_spans: dict[str, list[dict]] = {}
-        for span in self.spans:
-            normalized = span.get("_normalized", {})
-            category = normalized.get("category")
-            if category not in ("stt", "tts"):
-                continue
-            turn = self._get_parent_turn(span)
-            if not turn:
-                continue
-            turn_id = turn.get("span_id_hex")
-            if turn_id not in turn_spans:
-                turn_spans[turn_id] = []
-            turn_spans[turn_id].append(span)
-        return turn_spans
-
-    def _get_orphan_spans(self) -> list[dict]:
-        orphans = []
-        for span in self.spans:
-            normalized = span.get("_normalized", {})
-            category = normalized.get("category")
-            if category not in ("stt", "tts"):
-                continue
-            if self._get_parent_turn(span) is None:
-                orphans.append(span)
-        return orphans
-
     def _get_span_text(self, span: dict) -> str:
         normalized = span.get("_normalized", {})
         category = normalized.get("category")
         if category == "stt":
-            return normalized.get("transcript") or self._get_attribute(span, "transcript") or ""
+            return (
+                normalized.get("transcript")
+                or self._get_attribute(span, "transcript")
+                or ""
+            )
         elif category in ("tts", "llm"):
-            return normalized.get("output_text") or self._get_attribute(span, "text") or ""
+            return (
+                normalized.get("output_text") or self._get_attribute(span, "text") or ""
+            )
         return ""
 
     def _get_span_role(self, span: dict) -> str:
@@ -83,39 +91,43 @@ class Conversation:
         category = normalized.get("category")
         return "user" if category == "stt" else "assistant"
 
-    def _span_was_interrupted(self, span: dict) -> bool:
+    def _get_interruption_status(self, span: dict | None) -> bool:
+        if not span:
+            return False
         turn = self._get_parent_turn(span)
         if not turn:
             return False
         return bool(self._get_attribute(turn, "turn.was_interrupted"))
 
-    def _create_message(
-        self,
-        role: str,
-        texts: list[str],
-        span_ids: list[str],
-        timestamp: int,
-        was_interrupted: bool,
+    def _create_message_from_accumulator(
+        self, acc: MessageAccumulator, was_interrupted: bool
     ) -> Message:
         return Message(
-            role=role,
-            content=" ".join(texts),
-            timestamp=timestamp,
-            was_interrupted=was_interrupted and role == "assistant",
-            span_ids=span_ids,
+            role=acc.role,
+            content=" ".join(acc.texts),
+            timestamp=acc.timestamp,
+            was_interrupted=was_interrupted and acc.role == "assistant",
+            span_ids=acc.span_ids,
         )
 
-    def _build_messages_for_turn(
-        self, turn: dict, spans: list[dict]
+    def _flush_accumulator(
+        self, acc: MessageAccumulator, messages: list[Message], check_interruption: bool
+    ):
+        if not acc.has_content():
+            return
+        was_interrupted = (
+            self._get_interruption_status(acc.first_span)
+            if check_interruption
+            else False
+        )
+        messages.append(self._create_message_from_accumulator(acc, was_interrupted))
+
+    def _build_messages_from_spans(
+        self, spans: list[dict], check_interruption: bool = True
     ) -> list[Message]:
         spans_sorted = sorted(spans, key=lambda s: s.get("start_time_unix_nano", 0))
-        was_interrupted = bool(self._get_attribute(turn, "turn.was_interrupted"))
-
         messages: list[Message] = []
-        acc_role: str | None = None
-        acc_texts: list[str] = []
-        acc_span_ids: list[str] = []
-        acc_timestamp: int = 0
+        acc = MessageAccumulator()
 
         for span in spans_sorted:
             text = self._get_span_text(span)
@@ -123,63 +135,14 @@ class Conversation:
                 continue
 
             role = self._get_span_role(span)
-            if role == acc_role:
-                acc_texts.append(text)
-                acc_span_ids.append(span.get("span_id_hex"))
+            if role == acc.role:
+                acc.append(text, span)
                 continue
 
-            if acc_texts:
-                messages.append(
-                    self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted)
-                )
+            self._flush_accumulator(acc, messages, check_interruption)
+            acc.reset(role, text, span)
 
-            acc_role = role
-            acc_texts = [text]
-            acc_span_ids = [span.get("span_id_hex")]
-            acc_timestamp = span.get("start_time_unix_nano", 0)
-
-        if acc_texts:
-            messages.append(
-                self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted)
-            )
-
-        return messages
-
-    def _build_messages_for_orphans(self, spans: list[dict]) -> list[Message]:
-        spans_sorted = sorted(spans, key=lambda s: s.get("start_time_unix_nano", 0))
-
-        messages: list[Message] = []
-        acc_role: str | None = None
-        acc_texts: list[str] = []
-        acc_span_ids: list[str] = []
-        acc_timestamp: int = 0
-
-        for span in spans_sorted:
-            text = self._get_span_text(span)
-            if not text:
-                continue
-
-            role = self._get_span_role(span)
-            if role == acc_role:
-                acc_texts.append(text)
-                acc_span_ids.append(span.get("span_id_hex"))
-                continue
-
-            if acc_texts:
-                messages.append(
-                    self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, False)
-                )
-
-            acc_role = role
-            acc_texts = [text]
-            acc_span_ids = [span.get("span_id_hex")]
-            acc_timestamp = span.get("start_time_unix_nano", 0)
-
-        if acc_texts:
-            messages.append(
-                self._create_message(acc_role, acc_texts, acc_span_ids, acc_timestamp, False)
-            )
-
+        self._flush_accumulator(acc, messages, check_interruption)
         return messages
 
     def get_messages(self) -> list[Message]:
@@ -187,57 +150,11 @@ class Conversation:
             return self._messages
 
         stt_tts_spans = [
-            s for s in self.spans
+            s
+            for s in self.spans
             if s.get("_normalized", {}).get("category") in ("stt", "tts", "llm")
         ]
-        spans_sorted = sorted(stt_tts_spans, key=lambda s: s.get("start_time_unix_nano", 0))
-
-        all_messages: list[Message] = []
-        acc_role: str | None = None
-        acc_texts: list[str] = []
-        acc_span_ids: list[str] = []
-        acc_timestamp: int = 0
-        acc_first_span: dict | None = None
-
-        for span in spans_sorted:
-            text = self._get_span_text(span)
-            if not text:
-                continue
-
-            role = self._get_span_role(span)
-            if role == acc_role:
-                acc_texts.append(text)
-                acc_span_ids.append(span.get("span_id_hex"))
-                continue
-
-            if acc_texts and acc_role and acc_first_span:
-                was_interrupted = self._span_was_interrupted(acc_first_span)
-                all_messages.append(
-                    self._create_message(
-                        acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted
-                    )
-                )
-
-            acc_role = role
-            acc_texts = [text]
-            acc_span_ids = [span.get("span_id_hex")]
-            acc_timestamp = span.get("start_time_unix_nano", 0)
-            acc_first_span = span
-
-        if acc_texts and acc_role and acc_first_span:
-            was_interrupted = self._span_was_interrupted(acc_first_span)
-            all_messages.append(
-                self._create_message(
-                    acc_role, acc_texts, acc_span_ids, acc_timestamp, was_interrupted
-                )
-            )
-
-        orphan_spans = self._get_orphan_spans()
-        if orphan_spans:
-            orphan_messages = self._build_messages_for_orphans(orphan_spans)
-            all_messages.extend(orphan_messages)
-
-        self._messages = all_messages
+        self._messages = self._build_messages_from_spans(stt_tts_spans)
         return self._messages
 
     def to_dict_list(self) -> list[dict]:
