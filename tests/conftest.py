@@ -27,3 +27,12 @@ def create_wav_file():
 def temp_sessions_dir():
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
+
+
+@pytest.fixture
+def temp_data_dir():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_dir = Path(tmpdir)
+        sessions_dir = data_dir / "sessions"
+        sessions_dir.mkdir()
+        yield data_dir

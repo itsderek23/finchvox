@@ -6,6 +6,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 
 from finchvox.audio_compressor import AudioCompressor
+from finchvox.collector.config import get_sessions_base_dir
 
 _scheduler: AsyncIOScheduler | None = None
 
@@ -48,15 +49,16 @@ def find_sessions_to_compress(
     ]
 
 
-def compress_pending_sessions(sessions_dir: Path, inactive_minutes: int = 5) -> int:
+def compress_pending_sessions(data_dir: Path, inactive_minutes: int = 5) -> int:
     logger.debug("Running scheduled audio compression check")
+    sessions_dir = get_sessions_base_dir(data_dir)
     sessions = find_sessions_to_compress(sessions_dir, inactive_minutes)
     if not sessions:
         logger.debug("No sessions require compression")
         return 0
 
     logger.info(f"Found {len(sessions)} session(s) to compress")
-    compressor = AudioCompressor(sessions_dir)
+    compressor = AudioCompressor(data_dir)
     compressed_count = 0
 
     for session_id in sessions:
@@ -67,12 +69,12 @@ def compress_pending_sessions(sessions_dir: Path, inactive_minutes: int = 5) -> 
 
 
 def start_scheduler(
-    sessions_dir: Path, interval_minutes: int = 5, inactive_minutes: int = 5
+    data_dir: Path, interval_minutes: int = 5, inactive_minutes: int = 5
 ):
     scheduler = get_scheduler()
 
     def job():
-        compress_pending_sessions(sessions_dir, inactive_minutes)
+        compress_pending_sessions(data_dir, inactive_minutes)
 
     scheduler.add_job(
         job,

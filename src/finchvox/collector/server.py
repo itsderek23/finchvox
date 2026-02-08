@@ -21,7 +21,6 @@ from .config import (
     MAX_WORKERS,
     TRACES_DIR,
     get_default_data_dir,
-    get_sessions_base_dir,
 )
 from .exceptions_writer import ExceptionsWriter
 from .http_server import create_app
@@ -92,8 +91,8 @@ class CollectorServer:
         """Start both servers concurrently."""
         await self.start_grpc()
 
-        sessions_dir = get_sessions_base_dir(get_default_data_dir())
-        start_scheduler(sessions_dir)
+        data_dir = get_default_data_dir()
+        start_scheduler(data_dir)
 
         await self.start_http()
 

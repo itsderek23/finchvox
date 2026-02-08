@@ -5,6 +5,11 @@ from pathlib import Path
 from loguru import logger
 
 from finchvox.audio_utils import combine_chunks, find_chunks
+from finchvox.collector.config import (
+    get_session_audio_dir,
+    get_session_dir,
+    get_sessions_base_dir,
+)
 
 
 def ffmpeg_available() -> bool:
@@ -60,18 +65,18 @@ def compress_to_opus(input_wav: Path, output_opus: Path) -> bool:
 
 
 class AudioCompressor:
-    def __init__(self, sessions_dir: Path):
-        self.sessions_dir = sessions_dir
+    def __init__(self, data_dir: Path):
+        self.data_dir = data_dir
 
     def compress(self, session_id: str) -> bool:
-        session_dir = self.sessions_dir / session_id
-        audio_dir = session_dir / "audio"
+        session_dir = get_session_dir(self.data_dir, session_id)
+        audio_dir = get_session_audio_dir(self.data_dir, session_id)
 
         if not audio_dir.exists():
             logger.debug(f"No audio directory for session {session_id[:8]}...")
             return True
 
-        chunks = find_chunks(self.sessions_dir, session_id)
+        chunks = find_chunks(get_sessions_base_dir(self.data_dir), session_id)
         if not chunks:
             logger.debug(f"No audio chunks found for session {session_id[:8]}...")
             shutil.rmtree(audio_dir, ignore_errors=True)

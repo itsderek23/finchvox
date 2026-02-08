@@ -28,9 +28,10 @@ def make_session_with_chunks(
 
 
 @pytest.fixture
-def session_with_old_chunks(temp_sessions_dir, create_wav_file):
+def session_with_old_chunks(temp_data_dir, create_wav_file):
+    sessions_dir = temp_data_dir / "sessions"
     return make_session_with_chunks(
-        temp_sessions_dir,
+        sessions_dir,
         "abc123def456789012345678901234",
         create_wav_file,
         time.time() - 600,
@@ -38,41 +39,46 @@ def session_with_old_chunks(temp_sessions_dir, create_wav_file):
 
 
 @pytest.fixture
-def session_with_recent_chunks(temp_sessions_dir, create_wav_file):
+def session_with_recent_chunks(temp_data_dir, create_wav_file):
+    sessions_dir = temp_data_dir / "sessions"
     return make_session_with_chunks(
-        temp_sessions_dir, "recent123456789012345678901234", create_wav_file
+        sessions_dir, "recent123456789012345678901234", create_wav_file
     )
 
 
 class TestFindSessionsToCompress:
     def test_finds_session_with_old_chunks(
-        self, temp_sessions_dir, session_with_old_chunks
+        self, temp_data_dir, session_with_old_chunks
     ):
-        result = find_sessions_to_compress(temp_sessions_dir, inactive_minutes=5)
+        sessions_dir = temp_data_dir / "sessions"
+        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
         assert session_with_old_chunks in result
 
     def test_excludes_recently_active_session(
-        self, temp_sessions_dir, session_with_recent_chunks
+        self, temp_data_dir, session_with_recent_chunks
     ):
-        result = find_sessions_to_compress(temp_sessions_dir, inactive_minutes=5)
+        sessions_dir = temp_data_dir / "sessions"
+        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
         assert session_with_recent_chunks not in result
 
     def test_excludes_already_compressed_session(
-        self, temp_sessions_dir, session_with_old_chunks
+        self, temp_data_dir, session_with_old_chunks
     ):
-        session_dir = temp_sessions_dir / session_with_old_chunks
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / session_with_old_chunks
         (session_dir / "audio.opus").touch()
 
-        result = find_sessions_to_compress(temp_sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
         assert session_with_old_chunks not in result
 
-    def test_excludes_session_without_chunks(self, temp_sessions_dir):
+    def test_excludes_session_without_chunks(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
         session_id = "empty123456789012345678901234"
-        session_dir = temp_sessions_dir / session_id
+        session_dir = sessions_dir / session_id
         audio_dir = session_dir / "audio"
         audio_dir.mkdir(parents=True)
 
-        result = find_sessions_to_compress(temp_sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
         assert session_id not in result
 
     def test_returns_empty_for_nonexistent_dir(self):
@@ -80,34 +86,34 @@ class TestFindSessionsToCompress:
         assert result == []
 
     def test_handles_custom_inactive_minutes(
-        self, temp_sessions_dir, session_with_old_chunks
+        self, temp_data_dir, session_with_old_chunks
     ):
-        result = find_sessions_to_compress(temp_sessions_dir, inactive_minutes=20)
+        sessions_dir = temp_data_dir / "sessions"
+        result = find_sessions_to_compress(sessions_dir, inactive_minutes=20)
         assert session_with_old_chunks not in result
 
 
 class TestCompressPendingSessions:
-    def test_compresses_eligible_sessions(
-        self, temp_sessions_dir, session_with_old_chunks
-    ):
+    def test_compresses_eligible_sessions(self, temp_data_dir, session_with_old_chunks):
         with patch("finchvox.scheduler.AudioCompressor") as mock_compressor_class:
             mock_compressor = mock_compressor_class.return_value
             mock_compressor.compress.return_value = True
 
-            count = compress_pending_sessions(temp_sessions_dir, inactive_minutes=5)
+            count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
 
             assert count == 1
             mock_compressor.compress.assert_called_once_with(session_with_old_chunks)
 
-    def test_returns_zero_when_no_sessions(self, temp_sessions_dir):
-        count = compress_pending_sessions(temp_sessions_dir, inactive_minutes=5)
+    def test_returns_zero_when_no_sessions(self, temp_data_dir):
+        count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
         assert count == 0
 
     def test_counts_successful_compressions(
-        self, temp_sessions_dir, session_with_old_chunks, create_wav_file
+        self, temp_data_dir, session_with_old_chunks, create_wav_file
     ):
+        sessions_dir = temp_data_dir / "sessions"
         session_id_2 = "second23456789012345678901234"
-        session_dir_2 = temp_sessions_dir / session_id_2
+        session_dir_2 = sessions_dir / session_id_2
         audio_dir_2 = session_dir_2 / "audio"
         audio_dir_2.mkdir(parents=True)
 
@@ -120,7 +126,7 @@ class TestCompressPendingSessions:
             mock_compressor = mock_compressor_class.return_value
             mock_compressor.compress.side_effect = [True, False]
 
-            count = compress_pending_sessions(temp_sessions_dir, inactive_minutes=5)
+            count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
 
             assert count == 1
             assert mock_compressor.compress.call_count == 2
@@ -136,12 +142,12 @@ class TestSchedulerLifecycle:
         sched_module._scheduler = None
 
     @pytest.mark.asyncio
-    async def test_start_and_stop_scheduler(self, temp_sessions_dir):
+    async def test_start_and_stop_scheduler(self, temp_data_dir):
         import finchvox.scheduler as sched_module
 
         sched_module._scheduler = None
 
-        start_scheduler(temp_sessions_dir, interval_minutes=1, inactive_minutes=5)
+        start_scheduler(temp_data_dir, interval_minutes=1, inactive_minutes=5)
         scheduler = get_scheduler()
         assert scheduler.running
 

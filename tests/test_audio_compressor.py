@@ -11,9 +11,10 @@ from finchvox.audio_compressor import (
 
 
 @pytest.fixture
-def session_with_chunks(temp_sessions_dir, create_wav_file):
+def session_with_chunks(temp_data_dir, create_wav_file):
     session_id = "abc123def456789012345678901234"
-    session_dir = temp_sessions_dir / session_id
+    sessions_dir = temp_data_dir / "sessions"
+    session_dir = sessions_dir / session_id
     audio_dir = session_dir / "audio"
     audio_dir.mkdir(parents=True)
 
@@ -41,45 +42,48 @@ class TestFfmpegAvailable:
 
 
 class TestAudioCompressor:
-    def test_compress_with_no_audio_dir(self, temp_sessions_dir):
+    def test_compress_with_no_audio_dir(self, temp_data_dir):
         session_id = "abc123def456789012345678901234"
-        session_dir = temp_sessions_dir / session_id
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / session_id
         session_dir.mkdir(parents=True)
 
-        compressor = AudioCompressor(temp_sessions_dir)
+        compressor = AudioCompressor(temp_data_dir)
         result = compressor.compress(session_id)
 
         assert result is True
 
-    def test_compress_with_empty_audio_dir(self, temp_sessions_dir):
+    def test_compress_with_empty_audio_dir(self, temp_data_dir):
         session_id = "abc123def456789012345678901234"
-        session_dir = temp_sessions_dir / session_id
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / session_id
         audio_dir = session_dir / "audio"
         audio_dir.mkdir(parents=True)
 
-        compressor = AudioCompressor(temp_sessions_dir)
+        compressor = AudioCompressor(temp_data_dir)
         result = compressor.compress(session_id)
 
         assert result is True
         assert not audio_dir.exists()
 
     def test_compress_keeps_chunks_without_ffmpeg(
-        self, temp_sessions_dir, session_with_chunks
+        self, temp_data_dir, session_with_chunks
     ):
         with patch(
             "finchvox.audio_compressor.check_ffmpeg_available", return_value=False
         ):
-            compressor = AudioCompressor(temp_sessions_dir)
+            compressor = AudioCompressor(temp_data_dir)
             result = compressor.compress(session_with_chunks)
 
         assert result is False
 
-        session_dir = temp_sessions_dir / session_with_chunks
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / session_with_chunks
         assert (session_dir / "audio").exists()
         assert not (session_dir / "audio.opus").exists()
 
     def test_compress_creates_opus_and_removes_chunks_with_ffmpeg(
-        self, temp_sessions_dir, session_with_chunks
+        self, temp_data_dir, session_with_chunks
     ):
         if not ffmpeg_available():
             pytest.skip("ffmpeg not available")
@@ -88,12 +92,13 @@ class TestAudioCompressor:
 
         ac._FFMPEG_AVAILABLE = None
 
-        compressor = AudioCompressor(temp_sessions_dir)
+        compressor = AudioCompressor(temp_data_dir)
         result = compressor.compress(session_with_chunks)
 
         assert result is True
 
-        session_dir = temp_sessions_dir / session_with_chunks
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / session_with_chunks
         assert (session_dir / "audio.opus").exists()
         assert not (session_dir / "audio").exists()
 
