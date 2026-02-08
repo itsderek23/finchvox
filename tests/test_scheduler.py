@@ -14,34 +14,34 @@ from finchvox.scheduler import (
 )
 
 
-@pytest.fixture
-def session_with_old_chunks(temp_sessions_dir, create_wav_file):
-    session_id = "abc123def456789012345678901234"
-    session_dir = temp_sessions_dir / session_id
-    audio_dir = session_dir / "audio"
+def make_session_with_chunks(
+    sessions_dir: Path, session_id: str, create_wav_file, mtime: float | None = None
+) -> str:
+    audio_dir = sessions_dir / session_id / "audio"
     audio_dir.mkdir(parents=True)
-
-    old_time = time.time() - 600
     for i in range(3):
         chunk_path = audio_dir / f"chunk_{i:04d}.wav"
         create_wav_file(chunk_path, duration_seconds=0.5)
-        os.utime(chunk_path, (old_time, old_time))
-
+        if mtime is not None:
+            os.utime(chunk_path, (mtime, mtime))
     return session_id
+
+
+@pytest.fixture
+def session_with_old_chunks(temp_sessions_dir, create_wav_file):
+    return make_session_with_chunks(
+        temp_sessions_dir,
+        "abc123def456789012345678901234",
+        create_wav_file,
+        time.time() - 600,
+    )
 
 
 @pytest.fixture
 def session_with_recent_chunks(temp_sessions_dir, create_wav_file):
-    session_id = "recent123456789012345678901234"
-    session_dir = temp_sessions_dir / session_id
-    audio_dir = session_dir / "audio"
-    audio_dir.mkdir(parents=True)
-
-    for i in range(3):
-        chunk_path = audio_dir / f"chunk_{i:04d}.wav"
-        create_wav_file(chunk_path, duration_seconds=0.5)
-
-    return session_id
+    return make_session_with_chunks(
+        temp_sessions_dir, "recent123456789012345678901234", create_wav_file
+    )
 
 
 class TestFindSessionsToCompress:
