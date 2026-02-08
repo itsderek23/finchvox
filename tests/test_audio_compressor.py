@@ -1,7 +1,3 @@
-import struct
-import tempfile
-import wave
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -14,26 +10,8 @@ from finchvox.audio_compressor import (
 )
 
 
-def create_wav_file(
-    path: Path, duration_seconds: float = 1.0, sample_rate: int = 16000
-):
-    num_samples = int(duration_seconds * sample_rate)
-    with wave.open(str(path), "wb") as wf:
-        wf.setnchannels(2)
-        wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
-        samples = [0] * (num_samples * 2)
-        wf.writeframes(struct.pack(f"{len(samples)}h", *samples))
-
-
 @pytest.fixture
-def temp_sessions_dir():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def session_with_chunks(temp_sessions_dir):
+def session_with_chunks(temp_sessions_dir, create_wav_file):
     session_id = "abc123def456789012345678901234"
     session_dir = temp_sessions_dir / session_id
     audio_dir = session_dir / "audio"
@@ -138,7 +116,7 @@ class TestAudioCompressor:
 
 
 class TestCompressToOpus:
-    def test_compress_to_opus_creates_file(self, temp_sessions_dir):
+    def test_compress_to_opus_creates_file(self, temp_sessions_dir, create_wav_file):
         if not ffmpeg_available():
             pytest.skip("ffmpeg not available")
 

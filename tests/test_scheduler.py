@@ -1,7 +1,5 @@
-import struct
-import tempfile
+import os
 import time
-import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,26 +14,8 @@ from finchvox.scheduler import (
 )
 
 
-def create_wav_file(
-    path: Path, duration_seconds: float = 1.0, sample_rate: int = 16000
-):
-    num_samples = int(duration_seconds * sample_rate)
-    with wave.open(str(path), "wb") as wf:
-        wf.setnchannels(2)
-        wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
-        samples = [0] * (num_samples * 2)
-        wf.writeframes(struct.pack(f"{len(samples)}h", *samples))
-
-
 @pytest.fixture
-def temp_sessions_dir():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def session_with_old_chunks(temp_sessions_dir):
+def session_with_old_chunks(temp_sessions_dir, create_wav_file):
     session_id = "abc123def456789012345678901234"
     session_dir = temp_sessions_dir / session_id
     audio_dir = session_dir / "audio"
@@ -45,15 +25,13 @@ def session_with_old_chunks(temp_sessions_dir):
     for i in range(3):
         chunk_path = audio_dir / f"chunk_{i:04d}.wav"
         create_wav_file(chunk_path, duration_seconds=0.5)
-        import os
-
         os.utime(chunk_path, (old_time, old_time))
 
     return session_id
 
 
 @pytest.fixture
-def session_with_recent_chunks(temp_sessions_dir):
+def session_with_recent_chunks(temp_sessions_dir, create_wav_file):
     session_id = "recent123456789012345678901234"
     session_dir = temp_sessions_dir / session_id
     audio_dir = session_dir / "audio"
@@ -126,7 +104,7 @@ class TestCompressPendingSessions:
         assert count == 0
 
     def test_counts_successful_compressions(
-        self, temp_sessions_dir, session_with_old_chunks
+        self, temp_sessions_dir, session_with_old_chunks, create_wav_file
     ):
         session_id_2 = "second23456789012345678901234"
         session_dir_2 = temp_sessions_dir / session_id_2
@@ -136,8 +114,6 @@ class TestCompressPendingSessions:
         old_time = time.time() - 600
         chunk_path = audio_dir_2 / "chunk_0000.wav"
         create_wav_file(chunk_path)
-        import os
-
         os.utime(chunk_path, (old_time, old_time))
 
         with patch("finchvox.scheduler.AudioCompressor") as mock_compressor_class:

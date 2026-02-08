@@ -17,38 +17,35 @@ def get_scheduler() -> AsyncIOScheduler:
     return _scheduler
 
 
+def _session_needs_compression(session_dir: Path, inactive_threshold: float) -> bool:
+    audio_dir = session_dir / "audio"
+    audio_opus = session_dir / "audio.opus"
+
+    if audio_opus.exists() or not audio_dir.exists():
+        return False
+
+    chunks = list(audio_dir.glob("chunk_*.wav"))
+    if not chunks:
+        return False
+
+    latest_chunk_mtime = max(chunk.stat().st_mtime for chunk in chunks)
+    return latest_chunk_mtime < inactive_threshold
+
+
 def find_sessions_to_compress(
     sessions_dir: Path, inactive_minutes: int = 5
 ) -> list[str]:
-    sessions_to_compress = []
     if not sessions_dir.exists():
-        return sessions_to_compress
+        return []
 
     inactive_threshold = time.time() - (inactive_minutes * 60)
 
-    for session_dir in sessions_dir.iterdir():
-        if not session_dir.is_dir():
-            continue
-
-        session_id = session_dir.name
-        audio_dir = session_dir / "audio"
-        audio_opus = session_dir / "audio.opus"
-
-        if audio_opus.exists():
-            continue
-
-        if not audio_dir.exists():
-            continue
-
-        chunks = list(audio_dir.glob("chunk_*.wav"))
-        if not chunks:
-            continue
-
-        latest_chunk_mtime = max(chunk.stat().st_mtime for chunk in chunks)
-        if latest_chunk_mtime < inactive_threshold:
-            sessions_to_compress.append(session_id)
-
-    return sessions_to_compress
+    return [
+        session_dir.name
+        for session_dir in sessions_dir.iterdir()
+        if session_dir.is_dir()
+        and _session_needs_compression(session_dir, inactive_threshold)
+    ]
 
 
 def compress_pending_sessions(sessions_dir: Path, inactive_minutes: int = 5) -> int:
