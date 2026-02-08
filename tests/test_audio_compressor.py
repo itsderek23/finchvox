@@ -78,7 +78,7 @@ class TestAudioCompressor:
         assert (session_dir / "audio").exists()
         assert not (session_dir / "audio.opus").exists()
 
-    def test_compress_creates_opus_with_ffmpeg(
+    def test_compress_creates_opus_and_removes_chunks_with_ffmpeg(
         self, temp_sessions_dir, session_with_chunks
     ):
         if not ffmpeg_available():
@@ -96,23 +96,6 @@ class TestAudioCompressor:
         session_dir = temp_sessions_dir / session_with_chunks
         assert (session_dir / "audio.opus").exists()
         assert not (session_dir / "audio").exists()
-
-    def test_compress_removes_chunk_files_on_success(
-        self, temp_sessions_dir, session_with_chunks
-    ):
-        if not ffmpeg_available():
-            pytest.skip("ffmpeg not available")
-
-        import finchvox.audio_compressor as ac
-
-        ac._FFMPEG_AVAILABLE = None
-
-        compressor = AudioCompressor(temp_sessions_dir)
-        compressor.compress(session_with_chunks)
-
-        session_dir = temp_sessions_dir / session_with_chunks
-        audio_dir = session_dir / "audio"
-        assert not audio_dir.exists()
 
 
 class TestCompressToOpus:

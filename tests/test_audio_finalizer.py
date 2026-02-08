@@ -63,7 +63,7 @@ class TestAudioFinalizer:
         assert result is True
         assert not audio_dir.exists()
 
-    def test_finalize_merges_chunks_without_ffmpeg(
+    def test_finalize_merges_chunks_and_removes_audio_dir_without_ffmpeg(
         self, temp_sessions_dir, session_with_chunks
     ):
         with patch(
@@ -78,7 +78,7 @@ class TestAudioFinalizer:
         assert (session_dir / "audio.wav").exists()
         assert not (session_dir / "audio").exists()
 
-    def test_finalize_compresses_to_opus_with_ffmpeg(
+    def test_finalize_compresses_to_opus_and_removes_chunks_with_ffmpeg(
         self, temp_sessions_dir, session_with_chunks
     ):
         if not ffmpeg_available():
@@ -97,17 +97,6 @@ class TestAudioFinalizer:
         assert (session_dir / "audio.opus").exists()
         assert not (session_dir / "audio.wav").exists()
         assert not (session_dir / "audio").exists()
-
-    def test_finalize_removes_chunk_files(self, temp_sessions_dir, session_with_chunks):
-        with patch(
-            "finchvox.audio_finalizer.check_ffmpeg_available", return_value=False
-        ):
-            finalizer = AudioFinalizer(temp_sessions_dir)
-            finalizer.finalize(session_with_chunks)
-
-        session_dir = temp_sessions_dir / session_with_chunks
-        audio_dir = session_dir / "audio"
-        assert not audio_dir.exists()
 
 
 class TestCompressToOpus:
