@@ -88,7 +88,8 @@ def start_scheduler(
 
 def stop_scheduler():
     global _scheduler
-    if _scheduler is not None and _scheduler.running:
-        _scheduler.shutdown(wait=False)
-        logger.info("Audio compression scheduler stopped")
+    scheduler = _scheduler
     _scheduler = None
+    if scheduler is not None and scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("Audio compression scheduler stopped")
