@@ -26,9 +26,26 @@ if not UI_DIR.exists():
     UI_DIR = PROJECT_ROOT / "ui"
 
 
+def _get_finalized_audio_file(data_dir: Path, session_id: str) -> Path | None:
+    session_dir = get_session_dir(data_dir, session_id)
+    opus_file = session_dir / "audio.opus"
+    wav_file = session_dir / "audio.wav"
+
+    if opus_file.exists():
+        return opus_file
+    if wav_file.exists():
+        return wav_file
+    return None
+
+
 def _get_combined_audio_file(
     data_dir: Path, session_id: str, background_tasks: BackgroundTasks
-) -> Path:
+) -> tuple[Path, str, bool]:
+    finalized = _get_finalized_audio_file(data_dir, session_id)
+    if finalized:
+        media_type = "audio/opus" if finalized.suffix == ".opus" else "audio/wav"
+        return finalized, media_type, False
+
     audio_dir = get_session_audio_dir(data_dir, session_id)
     if not audio_dir.exists():
         raise HTTPException(
@@ -51,7 +68,7 @@ def _get_combined_audio_file(
     combine_chunks(chunks, tmp_path)
     background_tasks.add_task(tmp_path.unlink)
 
-    return tmp_path
+    return tmp_path, "audio/wav", True
 
 
 async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
@@ -166,14 +183,17 @@ async def _handle_get_session_audio(
     background_tasks: BackgroundTasks,
     as_download: bool = False,
 ) -> FileResponse:
-    tmp_path = _get_combined_audio_file(data_dir, session_id, background_tasks)
+    audio_path, media_type, is_temp = _get_combined_audio_file(
+        data_dir, session_id, background_tasks
+    )
     disposition = "attachment" if as_download else "inline"
+    extension = audio_path.suffix
 
     return FileResponse(
-        str(tmp_path),
-        media_type="audio/wav",
+        str(audio_path),
+        media_type=media_type,
         headers={
-            "Content-Disposition": f"{disposition}; filename=session_{session_id}.wav"
+            "Content-Disposition": f"{disposition}; filename=session_{session_id}{extension}"
         },
     )
 
@@ -181,10 +201,19 @@ async def _handle_get_session_audio(
 async def _handle_get_session_audio_status(
     data_dir: Path, session_id: str
 ) -> JSONResponse:
+    finalized = _get_finalized_audio_file(data_dir, session_id)
+    if finalized:
+        return JSONResponse({
+            "finalized": True,
+            "format": finalized.suffix[1:],
+            "size_bytes": finalized.stat().st_size,
+            "last_modified": finalized.stat().st_mtime,
+        })
+
     audio_dir = get_session_audio_dir(data_dir, session_id)
 
     if not audio_dir.exists():
-        return JSONResponse({"chunk_count": 0, "last_modified": None})
+        return JSONResponse({"finalized": False, "chunk_count": 0, "last_modified": None})
 
     chunks = find_chunks(get_sessions_base_dir(data_dir), session_id)
 
@@ -192,7 +221,11 @@ async def _handle_get_session_audio_status(
     if chunks:
         last_modified = max(Path(c).stat().st_mtime for c in chunks)
 
-    return JSONResponse({"chunk_count": len(chunks), "last_modified": last_modified})
+    return JSONResponse({
+        "finalized": False,
+        "chunk_count": len(chunks),
+        "last_modified": last_modified,
+    })
 
 
 async def _handle_upload_session(
