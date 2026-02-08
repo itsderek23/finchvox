@@ -42,29 +42,23 @@ class TestFfmpegAvailable:
 
 
 class TestAudioCompressor:
-    def test_compress_with_no_audio_dir(self, temp_data_dir):
-        session_id = "abc123def456789012345678901234"
-        sessions_dir = temp_data_dir / "sessions"
-        session_dir = sessions_dir / session_id
-        session_dir.mkdir(parents=True)
-
-        compressor = AudioCompressor(temp_data_dir)
-        result = compressor.compress(session_id)
-
-        assert result is True
-
-    def test_compress_with_empty_audio_dir(self, temp_data_dir):
+    @pytest.mark.parametrize("create_audio_dir", [False, True])
+    def test_compress_with_no_chunks(self, temp_data_dir, create_audio_dir):
         session_id = "abc123def456789012345678901234"
         sessions_dir = temp_data_dir / "sessions"
         session_dir = sessions_dir / session_id
         audio_dir = session_dir / "audio"
-        audio_dir.mkdir(parents=True)
+        if create_audio_dir:
+            audio_dir.mkdir(parents=True)
+        else:
+            session_dir.mkdir(parents=True)
 
         compressor = AudioCompressor(temp_data_dir)
         result = compressor.compress(session_id)
 
         assert result is True
-        assert not audio_dir.exists()
+        if create_audio_dir:
+            assert not audio_dir.exists()
 
     def test_compress_keeps_chunks_without_ffmpeg(
         self, temp_data_dir, session_with_chunks
