@@ -203,17 +203,21 @@ async def _handle_get_session_audio_status(
 ) -> JSONResponse:
     finalized = _get_finalized_audio_file(data_dir, session_id)
     if finalized:
-        return JSONResponse({
-            "finalized": True,
-            "format": finalized.suffix[1:],
-            "size_bytes": finalized.stat().st_size,
-            "last_modified": finalized.stat().st_mtime,
-        })
+        return JSONResponse(
+            {
+                "finalized": True,
+                "format": finalized.suffix[1:],
+                "size_bytes": finalized.stat().st_size,
+                "last_modified": finalized.stat().st_mtime,
+            }
+        )
 
     audio_dir = get_session_audio_dir(data_dir, session_id)
 
     if not audio_dir.exists():
-        return JSONResponse({"finalized": False, "chunk_count": 0, "last_modified": None})
+        return JSONResponse(
+            {"finalized": False, "chunk_count": 0, "last_modified": None}
+        )
 
     chunks = find_chunks(get_sessions_base_dir(data_dir), session_id)
 
@@ -221,11 +225,13 @@ async def _handle_get_session_audio_status(
     if chunks:
         last_modified = max(Path(c).stat().st_mtime for c in chunks)
 
-    return JSONResponse({
-        "finalized": False,
-        "chunk_count": len(chunks),
-        "last_modified": last_modified,
-    })
+    return JSONResponse(
+        {
+            "finalized": False,
+            "chunk_count": len(chunks),
+            "last_modified": last_modified,
+        }
+    )
 
 
 async def _handle_upload_session(
