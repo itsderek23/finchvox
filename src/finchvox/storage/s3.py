@@ -111,23 +111,22 @@ class S3Storage:
         except (FileNotFoundError, json.JSONDecodeError):
             return None
 
-    async def list_sessions(self, limit: int = 100) -> list[dict]:
-        all_sessions = []
+    async def _collect_manifests_from_prefix(self, date_prefix: str) -> list[dict]:
+        session_ids = await self._list_sessions_in_prefix(date_prefix)
+        manifests = await asyncio.gather(
+            *[self._fetch_manifest(sid) for sid in session_ids]
+        )
+        return [m for m in manifests if m is not None]
 
+    async def list_sessions(self, limit: int = 100) -> list[dict]:
         date_prefixes = await self._list_date_prefixes()
         date_prefixes.sort(reverse=True)
 
+        all_sessions = []
         for date_prefix in date_prefixes:
             if len(all_sessions) >= limit:
                 break
-
-            session_ids = await self._list_sessions_in_prefix(date_prefix)
-            manifests = await asyncio.gather(
-                *[self._fetch_manifest(sid) for sid in session_ids]
-            )
-            for manifest in manifests:
-                if manifest is not None:
-                    all_sessions.append(manifest)
+            all_sessions.extend(await self._collect_manifests_from_prefix(date_prefix))
 
         all_sessions.sort(key=lambda s: s.get("start_time") or 0, reverse=True)
         return all_sessions[:limit]

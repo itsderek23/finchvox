@@ -10,6 +10,7 @@ import signal
 import grpc
 import uvicorn
 from concurrent import futures
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI
@@ -38,6 +39,15 @@ from finchvox.scheduler import start_scheduler
 from finchvox.storage.backend import StorageBackend
 
 
+@dataclass
+class ServerConfig:
+    port: int = 3000
+    grpc_port: int = GRPC_PORT
+    host: str = "0.0.0.0"
+    data_dir: Optional[Path] = None
+    storage_backend: Optional[StorageBackend] = None
+
+
 class UnifiedServer:
     """
     Unified server managing both gRPC (OTLP traces) and HTTP (collector + UI).
@@ -48,29 +58,21 @@ class UnifiedServer:
     - Web UI and REST API for viewing traces (at root /)
     """
 
-    def __init__(
-        self,
-        port: int = 3000,
-        grpc_port: int = GRPC_PORT,
-        host: str = "0.0.0.0",
-        data_dir: Path = None,
-        storage_backend: Optional[StorageBackend] = None,
-    ):
+    def __init__(self, config: ServerConfig = None):
         """
         Initialize the unified server.
 
         Args:
-            port: HTTP server port (default: 3000)
-            grpc_port: gRPC server port (default: 4317)
-            host: Host to bind to (default: "0.0.0.0")
-            data_dir: Base data directory (default: ~/.finchvox)
-            storage_backend: Optional remote storage backend (e.g., S3)
+            config: Server configuration (defaults provided if None)
         """
-        self.port = port
-        self.grpc_port = grpc_port
-        self.host = host
-        self.data_dir = data_dir if data_dir else get_default_data_dir()
-        self.storage_backend = storage_backend
+        if config is None:
+            config = ServerConfig()
+
+        self.port = config.port
+        self.grpc_port = config.grpc_port
+        self.host = config.host
+        self.data_dir = config.data_dir if config.data_dir else get_default_data_dir()
+        self.storage_backend = config.storage_backend
 
         self.span_writer = SpanWriter(self.data_dir)
         self.log_writer = LogWriter(self.data_dir)

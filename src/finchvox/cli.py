@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from finchvox.server import UnifiedServer
+from finchvox.server import ServerConfig, UnifiedServer
 from finchvox.collector.config import GRPC_PORT
 from finchvox import telemetry
 from finchvox.storage.backend import StorageBackend
@@ -106,13 +106,14 @@ def cmd_start(args):
         print("Telemetry: Disabled")
     print("=" * 50)
 
-    server = UnifiedServer(
+    config = ServerConfig(
         port=args.port,
         grpc_port=args.grpc_port,
         host=args.host,
         data_dir=data_dir,
         storage_backend=storage_backend,
     )
+    server = UnifiedServer(config)
     server.run()
 
 

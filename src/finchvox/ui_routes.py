@@ -317,17 +317,7 @@ async def _handle_get_session_environment(
     return JSONResponse(json.loads(env_file.read_text()))
 
 
-def register_ui_routes(
-    app: FastAPI,
-    data_dir: Path = None,
-    remote_storage: Optional[StorageBackend] = None,
-):
-    if data_dir is None:
-        data_dir = get_default_data_dir()
-
-    sessions_base_dir = get_sessions_base_dir(data_dir)
-    local_storage = LocalStorage(data_dir)
-
+def _register_static_routes(app: FastAPI):
     app.mount("/css", StaticFiles(directory=str(UI_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(UI_DIR / "js")), name="js")
     app.mount("/lib", StaticFiles(directory=str(UI_DIR / "lib")), name="lib")
@@ -346,6 +336,14 @@ def register_ui_routes(
         telemetry.send_event("session_view")
         return FileResponse(str(UI_DIR / "session_detail.html"))
 
+
+def _register_api_routes(
+    app: FastAPI,
+    data_dir: Path,
+    sessions_base_dir: Path,
+    local_storage: LocalStorage,
+    remote_storage: Optional[StorageBackend],
+):
     @app.get("/api/sessions")
     async def list_sessions() -> JSONResponse:
         return await _handle_list_sessions(
@@ -405,3 +403,20 @@ def register_ui_routes(
     async def get_session_environment(session_id: str):
         await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_environment(data_dir, session_id)
+
+
+def register_ui_routes(
+    app: FastAPI,
+    data_dir: Path = None,
+    remote_storage: Optional[StorageBackend] = None,
+):
+    if data_dir is None:
+        data_dir = get_default_data_dir()
+
+    sessions_base_dir = get_sessions_base_dir(data_dir)
+    local_storage = LocalStorage(data_dir)
+
+    _register_static_routes(app)
+    _register_api_routes(
+        app, data_dir, sessions_base_dir, local_storage, remote_storage
+    )
