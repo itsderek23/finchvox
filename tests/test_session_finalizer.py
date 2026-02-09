@@ -89,7 +89,7 @@ class TestSessionFinalizer:
         manifest = json.loads((session_dir / "manifest.json").read_text())
         assert manifest["session_id"] == session_id
         assert manifest["service_name"] == "test-service"
-        assert manifest["turn_count"] == 1
+        assert manifest["trace"]["turn_count"] == 1
         assert manifest["log_count"] == 3
         assert manifest["duration_ms"] == 1000000.0
 
@@ -158,6 +158,6 @@ class TestSessionFinalizer:
         assert manifest["start_time"] == 1707300600.0
         assert manifest["end_time"] == 1707301500.0
         assert manifest["duration_ms"] == 900000.0
-        assert manifest["audio_size_bytes"] is None
-        assert manifest["turn_count"] == 2
+        assert manifest["audio_size_mb"] is None
+        assert manifest["trace"]["turn_count"] == 2
         assert manifest["log_count"] == 10

@@ -26,16 +26,7 @@ class SessionFinalizer:
 
     def _generate_manifest(self, session_dir: Path) -> None:
         session = Session(session_dir)
-        manifest = {
-            "session_id": session.session_id,
-            "service_name": session.service_name,
-            "start_time": session.start_time,
-            "end_time": session.end_time,
-            "duration_ms": session.duration_ms,
-            "audio_size_bytes": session.get_audio_size_bytes(),
-            "turn_count": session.trace.turn_count,
-            "log_count": session.log_count,
-        }
+        manifest = session.to_dict()
         manifest_path = session_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest))
         logger.info(f"Generated manifest for session {session.session_id[:8]}...")
