@@ -71,6 +71,17 @@ def _get_combined_audio_file(
     return tmp_path, "audio/wav", True
 
 
+def _load_session_dict(session_dir: Path) -> dict | None:
+    manifest_path = session_dir / "manifest.json"
+    if manifest_path.exists():
+        return json.loads(manifest_path.read_text())
+
+    trace_file = session_dir / f"trace_{session_dir.name}.jsonl"
+    if not trace_file.exists():
+        return None
+    return Session(session_dir).to_dict()
+
+
 async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
     if not sessions_base_dir.exists():
         return JSONResponse({"sessions": [], "data_dir": str(sessions_base_dir)})
@@ -80,15 +91,10 @@ async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
         if not session_dir.is_dir():
             continue
 
-        session_id = session_dir.name
-        trace_file = session_dir / f"trace_{session_id}.jsonl"
-
-        if not trace_file.exists():
-            continue
-
         try:
-            session = Session(session_dir)
-            sessions.append(session.to_dict())
+            session_dict = _load_session_dict(session_dir)
+            if session_dict:
+                sessions.append(session_dict)
         except Exception as e:
             print(f"Error reading session {session_dir}: {e}")
             continue
