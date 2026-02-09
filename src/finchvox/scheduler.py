@@ -59,11 +59,11 @@ def _session_needs_finalization(
     if inactive_seconds > max_inactive_seconds:
         return False
 
-    session = Session(session_dir)
-    if session.is_root_span_ended():
+    if inactive_seconds >= min_inactive_seconds:
         return True
 
-    return inactive_seconds >= min_inactive_seconds
+    session = Session(session_dir)
+    return session.is_root_span_ended()
 
 
 def find_sessions_to_finalize(

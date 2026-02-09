@@ -299,6 +299,17 @@ class Session:
         return None
 
     @staticmethod
+    def load_dict_from_dir(session_dir: Path) -> dict | None:
+        manifest_path = session_dir / "manifest.json"
+        if manifest_path.exists():
+            return json.loads(manifest_path.read_text())
+
+        trace_file = session_dir / f"trace_{session_dir.name}.jsonl"
+        if not trace_file.exists():
+            return None
+        return Session(session_dir).to_dict()
+
+    @staticmethod
     def from_zip(
         zip_bytes: bytes, sessions_base_dir: Path
     ) -> tuple[Optional["Session"], str | None]:

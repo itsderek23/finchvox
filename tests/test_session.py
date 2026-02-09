@@ -56,3 +56,43 @@ class TestIsRootSpanEnded:
         session_dir.mkdir(parents=True)
         session = Session(session_dir)
         assert session.is_root_span_ended() is False
+
+
+class TestLoadDictFromDir:
+    def test_returns_manifest_when_exists(self, temp_sessions_dir):
+        session_id = "manifest_exists_12345678901"
+        session_dir = temp_sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        manifest = {"session_id": session_id, "service_name": "test"}
+        (session_dir / "manifest.json").write_text(json.dumps(manifest))
+
+        result = Session.load_dict_from_dir(session_dir)
+        assert result == manifest
+
+    def test_falls_back_to_trace_when_no_manifest(self, temp_sessions_dir):
+        session_id = "no_manifest_1234567890123456"
+        session_dir = temp_sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        spans = [
+            {
+                "name": "root",
+                "start_time_unix_nano": "1000000000000",
+                "end_time_unix_nano": "2000000000000",
+            }
+        ]
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        with open(trace_file, "w") as f:
+            for span in spans:
+                f.write(json.dumps(span) + "\n")
+
+        result = Session.load_dict_from_dir(session_dir)
+        assert result["session_id"] == session_id
+        assert result["duration_ms"] == 1000000.0
+
+    def test_returns_none_when_no_trace_or_manifest(self, temp_sessions_dir):
+        session_id = "empty_session_12345678901234"
+        session_dir = temp_sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+
+        result = Session.load_dict_from_dir(session_dir)
+        assert result is None
