@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from pathlib import Path
@@ -6,19 +7,53 @@ from unittest.mock import patch
 import pytest
 
 from finchvox.scheduler import (
-    compress_pending_sessions,
-    find_sessions_to_compress,
+    _get_last_activity_time,
+    _session_needs_finalization,
+    finalize_pending_sessions,
+    find_sessions_to_finalize,
     get_scheduler,
     start_scheduler,
     stop_scheduler,
 )
 
 
+def create_trace_file(
+    session_dir: Path, session_id: str, with_root_end_time: bool = False
+):
+    trace_file = session_dir / f"trace_{session_id}.jsonl"
+    if with_root_end_time:
+        span = {
+            "name": "root",
+            "start_time_unix_nano": "1000000000000",
+            "end_time_unix_nano": "2000000000000",
+        }
+    else:
+        span = {
+            "name": "root",
+            "parent_span_id_hex": "abc123",
+            "start_time_unix_nano": "1000000000000",
+        }
+    with open(trace_file, "w") as f:
+        f.write(json.dumps(span) + "\n")
+
+
+def make_session_with_trace(
+    sessions_dir: Path, session_id: str, with_root_end_time: bool = False
+) -> str:
+    session_dir = sessions_dir / session_id
+    session_dir.mkdir(parents=True)
+    create_trace_file(session_dir, session_id, with_root_end_time)
+    return session_id
+
+
 def make_session_with_chunks(
     sessions_dir: Path, session_id: str, create_wav_file, mtime: float | None = None
 ) -> str:
-    audio_dir = sessions_dir / session_id / "audio"
-    audio_dir.mkdir(parents=True)
+    session_dir = sessions_dir / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+    create_trace_file(session_dir, session_id)
+    audio_dir = session_dir / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
     for i in range(3):
         chunk_path = audio_dir / f"chunk_{i:04d}.wav"
         create_wav_file(chunk_path, duration_seconds=0.5)
@@ -30,12 +65,12 @@ def make_session_with_chunks(
 @pytest.fixture
 def session_with_old_chunks(temp_data_dir, create_wav_file):
     sessions_dir = temp_data_dir / "sessions"
-    return make_session_with_chunks(
-        sessions_dir,
-        "abc123def456789012345678901234",
-        create_wav_file,
-        time.time() - 600,
-    )
+    session_id = "abc123def456789012345678901234"
+    old_time = time.time() - 120
+    make_session_with_chunks(sessions_dir, session_id, create_wav_file, old_time)
+    trace_file = sessions_dir / session_id / f"trace_{session_id}.jsonl"
+    os.utime(trace_file, (old_time, old_time))
+    return session_id
 
 
 @pytest.fixture
@@ -46,121 +81,230 @@ def session_with_recent_chunks(temp_data_dir, create_wav_file):
     )
 
 
-class TestFindSessionsToCompress:
-    def test_finds_session_with_old_chunks(
-        self, temp_data_dir, session_with_old_chunks
-    ):
+class TestGetLastActivityTime:
+    def test_returns_trace_file_mtime(self, temp_data_dir):
         sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        session_id = "trace_only_123456789012345678"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id)
+
+        result = _get_last_activity_time(session_dir)
+        expected = (session_dir / f"trace_{session_id}.jsonl").stat().st_mtime
+        assert result == expected
+
+    def test_returns_max_of_trace_and_logs(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "trace_logs_123456789012345678"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        logs_file = session_dir / f"logs_{session_id}.jsonl"
+
+        trace_file.write_text('{"name": "test"}\n')
+        old_time = time.time() - 100
+        os.utime(trace_file, (old_time, old_time))
+
+        logs_file.write_text('{"body": "log"}\n')
+
+        result = _get_last_activity_time(session_dir)
+        assert result == logs_file.stat().st_mtime
+
+    def test_returns_max_of_all_files(self, temp_data_dir, create_wav_file):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "all_files_1234567890123456789"
+        session_dir = sessions_dir / session_id
+        audio_dir = session_dir / "audio"
+        audio_dir.mkdir(parents=True)
+
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        trace_file.write_text('{"name": "test"}\n')
+
+        old_time = time.time() - 200
+        os.utime(trace_file, (old_time, old_time))
+
+        chunk = audio_dir / "chunk_0000.wav"
+        create_wav_file(chunk, duration_seconds=0.5)
+
+        result = _get_last_activity_time(session_dir)
+        assert result == chunk.stat().st_mtime
+
+    def test_returns_zero_for_empty_dir(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_dir = sessions_dir / "empty_session_123456789012"
+        session_dir.mkdir(parents=True)
+
+        result = _get_last_activity_time(session_dir)
+        assert result == 0.0
+
+
+class TestSessionNeedsFinalization:
+    def test_returns_false_if_manifest_exists(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "manifest_exists_12345678901234"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id)
+        (session_dir / "manifest.json").write_text("{}")
+
+        result = _session_needs_finalization(session_dir)
+        assert result is False
+
+    def test_returns_false_if_no_trace_file(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "no_trace_123456789012345678"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+
+        result = _session_needs_finalization(session_dir)
+        assert result is False
+
+    def test_returns_true_if_root_span_ended(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "root_ended_12345678901234567"
+        make_session_with_trace(sessions_dir, session_id, with_root_end_time=True)
+
+        result = _session_needs_finalization(sessions_dir / session_id)
+        assert result is True
+
+    def test_returns_true_if_inactive_past_threshold(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "inactive_1234567890123456789"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id)
+
+        old_time = time.time() - 120
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        os.utime(trace_file, (old_time, old_time))
+
+        result = _session_needs_finalization(session_dir, min_inactive_seconds=60)
+        assert result is True
+
+    def test_returns_false_if_not_inactive_enough(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "active_session_1234567890123"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id)
+
+        result = _session_needs_finalization(session_dir, min_inactive_seconds=60)
+        assert result is False
+
+    def test_returns_false_if_older_than_max_threshold(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = "very_old_session_1234567890"
+        session_dir = sessions_dir / session_id
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id, with_root_end_time=True)
+
+        old_time = time.time() - 7200
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        os.utime(trace_file, (old_time, old_time))
+
+        result = _session_needs_finalization(
+            session_dir, min_inactive_seconds=60, max_inactive_seconds=3600
         )
+        assert result is False
+
+
+class TestFindSessionsToFinalize:
+    def test_finds_session_with_ended_root_span(self, temp_data_dir):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = make_session_with_trace(
+            sessions_dir, "ended_root_12345678901234567", with_root_end_time=True
+        )
+
+        result = find_sessions_to_finalize(sessions_dir)
+        assert session_id in result
+
+    def test_finds_inactive_session(self, temp_data_dir, session_with_old_chunks):
+        sessions_dir = temp_data_dir / "sessions"
+        result = find_sessions_to_finalize(sessions_dir, min_inactive_seconds=60)
         assert session_with_old_chunks in result
 
     def test_excludes_recently_active_session(
         self, temp_data_dir, session_with_recent_chunks
     ):
         sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
-        )
+        result = find_sessions_to_finalize(sessions_dir, min_inactive_seconds=60)
         assert session_with_recent_chunks not in result
 
-    def test_excludes_already_compressed_session(
-        self, temp_data_dir, session_with_old_chunks
-    ):
+    def test_excludes_already_finalized_session(self, temp_data_dir):
         sessions_dir = temp_data_dir / "sessions"
-        session_dir = sessions_dir / session_with_old_chunks
-        (session_dir / "audio.opus").touch()
-
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        session_id = make_session_with_trace(
+            sessions_dir, "finalized_12345678901234567", with_root_end_time=True
         )
-        assert session_with_old_chunks not in result
+        (sessions_dir / session_id / "manifest.json").write_text("{}")
 
-    def test_excludes_session_without_chunks(self, temp_data_dir):
+        result = find_sessions_to_finalize(sessions_dir)
+        assert session_id not in result
+
+    def test_excludes_session_older_than_max_threshold(self, temp_data_dir):
         sessions_dir = temp_data_dir / "sessions"
-        session_id = "empty123456789012345678901234"
+        session_id = "very_old_session_1234567890"
         session_dir = sessions_dir / session_id
-        audio_dir = session_dir / "audio"
-        audio_dir.mkdir(parents=True)
+        session_dir.mkdir(parents=True)
+        create_trace_file(session_dir, session_id, with_root_end_time=True)
 
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        old_time = time.time() - 7200
+        trace_file = session_dir / f"trace_{session_id}.jsonl"
+        os.utime(trace_file, (old_time, old_time))
+
+        result = find_sessions_to_finalize(
+            sessions_dir, min_inactive_seconds=60, max_inactive_seconds=3600
         )
         assert session_id not in result
 
     def test_returns_empty_for_nonexistent_dir(self):
-        result = find_sessions_to_compress(Path("/nonexistent/path"))
+        result = find_sessions_to_finalize(Path("/nonexistent/path"))
         assert result == []
 
-    def test_excludes_session_older_than_max_threshold(
-        self, temp_data_dir, create_wav_file
-    ):
+
+class TestFinalizePendingSessions:
+    def test_finalizes_eligible_sessions(self, temp_data_dir):
         sessions_dir = temp_data_dir / "sessions"
-        session_id = make_session_with_chunks(
-            sessions_dir,
-            "veryold1234567890123456789012",
-            create_wav_file,
-            time.time() - 7200,
+        session_id = make_session_with_trace(
+            sessions_dir, "eligible_123456789012345678", with_root_end_time=True
         )
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
-        )
-        assert session_id not in result
 
-    def test_excludes_session_not_old_enough(
-        self, temp_data_dir, session_with_old_chunks
-    ):
-        sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(
-            sessions_dir, min_inactive_minutes=20, max_inactive_minutes=60
-        )
-        assert session_with_old_chunks not in result
+        with patch("finchvox.scheduler.SessionFinalizer") as mock_class:
+            mock_finalizer = mock_class.return_value
+            mock_finalizer.finalize.return_value = True
 
-
-class TestCompressPendingSessions:
-    def test_compresses_eligible_sessions(self, temp_data_dir, session_with_old_chunks):
-        with patch("finchvox.scheduler.AudioCompressor") as mock_compressor_class:
-            mock_compressor = mock_compressor_class.return_value
-            mock_compressor.compress.return_value = True
-
-            count = compress_pending_sessions(
-                temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+            count = finalize_pending_sessions(
+                temp_data_dir, min_inactive_seconds=60, max_inactive_seconds=3600
             )
 
             assert count == 1
-            mock_compressor.compress.assert_called_once_with(session_with_old_chunks)
+            mock_finalizer.finalize.assert_called_once_with(session_id)
 
     def test_returns_zero_when_no_sessions(self, temp_data_dir):
-        count = compress_pending_sessions(
-            temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        count = finalize_pending_sessions(
+            temp_data_dir, min_inactive_seconds=60, max_inactive_seconds=3600
         )
         assert count == 0
 
-    def test_counts_successful_compressions(
-        self, temp_data_dir, session_with_old_chunks, create_wav_file
-    ):
+    def test_counts_successful_finalizations(self, temp_data_dir):
         sessions_dir = temp_data_dir / "sessions"
-        session_id_2 = "second23456789012345678901234"
-        session_dir_2 = sessions_dir / session_id_2
-        audio_dir_2 = session_dir_2 / "audio"
-        audio_dir_2.mkdir(parents=True)
+        make_session_with_trace(
+            sessions_dir, "success1_12345678901234567", with_root_end_time=True
+        )
+        make_session_with_trace(
+            sessions_dir, "failure1_12345678901234567", with_root_end_time=True
+        )
 
-        old_time = time.time() - 600
-        chunk_path = audio_dir_2 / "chunk_0000.wav"
-        create_wav_file(chunk_path)
-        os.utime(chunk_path, (old_time, old_time))
+        with patch("finchvox.scheduler.SessionFinalizer") as mock_class:
+            mock_finalizer = mock_class.return_value
+            mock_finalizer.finalize.side_effect = [True, False]
 
-        with patch("finchvox.scheduler.AudioCompressor") as mock_compressor_class:
-            mock_compressor = mock_compressor_class.return_value
-            mock_compressor.compress.side_effect = [True, False]
-
-            count = compress_pending_sessions(
-                temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+            count = finalize_pending_sessions(
+                temp_data_dir, min_inactive_seconds=60, max_inactive_seconds=3600
             )
 
             assert count == 1
-            assert mock_compressor.compress.call_count == 2
+            assert mock_finalizer.finalize.call_count == 2
 
 
 class TestSchedulerLifecycle:
@@ -178,7 +322,7 @@ class TestSchedulerLifecycle:
 
         sched_module._scheduler = None
 
-        start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=5)
+        start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=1)
         scheduler = get_scheduler()
         assert scheduler.running
 
@@ -195,15 +339,16 @@ class TestSchedulerLifecycle:
     @pytest.mark.asyncio
     async def test_scheduler_runs_immediately_on_start(self, temp_data_dir):
         import asyncio
+
         import finchvox.scheduler as sched_module
 
         sched_module._scheduler = None
 
-        with patch("finchvox.scheduler.compress_pending_sessions") as mock_compress:
-            start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=5)
+        with patch("finchvox.scheduler.finalize_pending_sessions") as mock_finalize:
+            start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=1)
 
             await asyncio.sleep(0.1)
 
-            mock_compress.assert_called_once()
+            mock_finalize.assert_called_once()
 
             stop_scheduler()
