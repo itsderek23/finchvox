@@ -42,8 +42,8 @@ def cmd_start(args):
     else:
         data_dir = Path.home() / ".finchvox"
 
-    print(f"FinchVox v{get_version()}")
     print("=" * 50)
+    print(f"Finchvox v{get_version()}")
     print(f"HTTP Server:  http://{args.host}:{args.port}")
     print(f"  - UI:       http://{args.host}:{args.port}")
     print(f"  - Collector: http://{args.host}:{args.port}/collector")
