@@ -25,7 +25,6 @@ class AudioHandler:
             data_dir: Base data directory (e.g., ~/.finchvox)
         """
         self.data_dir = data_dir
-        logger.info(f"AudioHandler initialized with data_dir: {self.data_dir}")
 
     async def save_audio_chunk(
         self,
