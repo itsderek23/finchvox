@@ -11,6 +11,7 @@ import grpc
 import uvicorn
 from concurrent import futures
 from pathlib import Path
+from typing import Optional
 from fastapi import FastAPI
 from loguru import logger
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
@@ -34,6 +35,7 @@ from finchvox.collector.config import (
 )
 from finchvox import telemetry
 from finchvox.scheduler import start_scheduler
+from finchvox.storage.backend import StorageBackend
 
 
 class UnifiedServer:
@@ -52,6 +54,7 @@ class UnifiedServer:
         grpc_port: int = GRPC_PORT,
         host: str = "0.0.0.0",
         data_dir: Path = None,
+        storage_backend: Optional[StorageBackend] = None,
     ):
         """
         Initialize the unified server.
@@ -61,24 +64,23 @@ class UnifiedServer:
             grpc_port: gRPC server port (default: 4317)
             host: Host to bind to (default: "0.0.0.0")
             data_dir: Base data directory (default: ~/.finchvox)
+            storage_backend: Optional remote storage backend (e.g., S3)
         """
         self.port = port
         self.grpc_port = grpc_port
         self.host = host
         self.data_dir = data_dir if data_dir else get_default_data_dir()
+        self.storage_backend = storage_backend
 
-        # Initialize shared writer instances
         self.span_writer = SpanWriter(self.data_dir)
         self.log_writer = LogWriter(self.data_dir)
         self.audio_handler = AudioHandler(self.data_dir)
 
-        # Server instances
         self.grpc_server = None
         self.http_server = None
         self.shutdown_event = asyncio.Event()
         self._is_shutting_down = False
 
-        # Create unified FastAPI app
         self.app = self._create_app()
 
     def _create_app(self) -> FastAPI:
@@ -94,10 +96,8 @@ class UnifiedServer:
             version="0.1.0",
         )
 
-        # Register UI routes first (includes static file mounts)
-        register_ui_routes(app, self.data_dir)
+        register_ui_routes(app, self.data_dir, remote_storage=self.storage_backend)
 
-        # Register collector routes with /collector prefix
         register_collector_routes(app, self.audio_handler, prefix="/collector")
 
         return app
@@ -144,7 +144,7 @@ class UnifiedServer:
 
         await self.start_grpc()
 
-        start_scheduler(self.data_dir)
+        start_scheduler(self.data_dir, storage_backend=self.storage_backend)
 
         await self.start_http()
 

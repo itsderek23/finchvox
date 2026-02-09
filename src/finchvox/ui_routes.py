@@ -1,6 +1,7 @@
 import json
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -18,6 +19,8 @@ from finchvox.collector.config import (
     get_default_data_dir,
 )
 from finchvox import telemetry
+from finchvox.storage.backend import StorageBackend
+from finchvox.storage.local import LocalStorage
 
 
 UI_DIR = Path(__file__).parent / "ui"
@@ -71,26 +74,59 @@ def _get_combined_audio_file(
     return tmp_path, "audio/wav", True
 
 
-async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
-    if not sessions_base_dir.exists():
-        return JSONResponse({"sessions": [], "data_dir": str(sessions_base_dir)})
+async def _handle_list_sessions(
+    sessions_base_dir: Path,
+    local_storage: LocalStorage,
+    remote_storage: Optional[StorageBackend] = None,
+) -> JSONResponse:
+    local_sessions = await local_storage.list_sessions(limit=100)
 
-    session_dirs = [d for d in sessions_base_dir.iterdir() if d.is_dir()]
-    session_dirs.sort(key=lambda d: d.stat().st_mtime, reverse=True)
-    session_dirs = session_dirs[:100]
-
-    sessions = []
-    for session_dir in session_dirs:
+    if remote_storage is not None:
         try:
-            session_dict = Session.load_dict_from_dir(session_dir)
-            if session_dict:
-                sessions.append(session_dict)
+            remote_sessions = await remote_storage.list_sessions(limit=100)
+            local_ids = {s["session_id"] for s in local_sessions}
+            for remote_session in remote_sessions:
+                if remote_session["session_id"] not in local_ids:
+                    remote_session["_remote"] = True
+                    local_sessions.append(remote_session)
         except Exception as e:
-            print(f"Error reading session {session_dir}: {e}")
-            continue
+            logger.warning(f"Failed to list remote sessions: {e}")
 
-    sessions.sort(key=lambda s: s.get("start_time") or 0, reverse=True)
+    local_sessions.sort(key=lambda s: s.get("start_time") or 0, reverse=True)
+    sessions = local_sessions[:100]
+
     return JSONResponse({"sessions": sessions, "data_dir": str(sessions_base_dir)})
+
+
+async def _ensure_session_local(
+    data_dir: Path,
+    session_id: str,
+    remote_storage: Optional[StorageBackend] = None,
+) -> Path:
+    session_dir = get_session_dir(data_dir, session_id)
+    trace_file = session_dir / f"trace_{session_id}.jsonl"
+
+    if trace_file.exists():
+        return session_dir
+
+    if remote_storage is not None:
+        from finchvox.storage.s3 import S3Storage
+
+        if isinstance(remote_storage, S3Storage):
+            downloaded = await remote_storage.download_session(session_id, session_dir)
+            if downloaded:
+                return session_dir
+
+    raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+
+async def _get_session_async(
+    data_dir: Path,
+    session_id: str,
+    remote_storage: Optional[StorageBackend] = None,
+) -> Session:
+    session_dir = await _ensure_session_local(data_dir, session_id, remote_storage)
+    return Session(session_dir)
 
 
 def _get_session(data_dir: Path, session_id: str) -> Session:
@@ -281,11 +317,16 @@ async def _handle_get_session_environment(
     return JSONResponse(json.loads(env_file.read_text()))
 
 
-def register_ui_routes(app: FastAPI, data_dir: Path = None):
+def register_ui_routes(
+    app: FastAPI,
+    data_dir: Path = None,
+    remote_storage: Optional[StorageBackend] = None,
+):
     if data_dir is None:
         data_dir = get_default_data_dir()
 
     sessions_base_dir = get_sessions_base_dir(data_dir)
+    local_storage = LocalStorage(data_dir)
 
     app.mount("/css", StaticFiles(directory=str(UI_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(UI_DIR / "js")), name="js")
@@ -307,42 +348,53 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions")
     async def list_sessions() -> JSONResponse:
-        return await _handle_list_sessions(sessions_base_dir)
+        return await _handle_list_sessions(
+            sessions_base_dir, local_storage, remote_storage
+        )
 
     @app.get("/api/sessions/{session_id}/trace")
     async def get_session_trace(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_trace(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/raw")
     async def get_session_raw(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_raw(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/logs")
     async def get_session_logs(session_id: str, limit: int = 1000) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_logs(data_dir, session_id, limit)
 
     @app.get("/api/sessions/{session_id}/conversation")
     async def get_session_conversation(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_conversation(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/exceptions")
     async def get_session_exceptions(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_exceptions(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/audio")
     async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_audio(data_dir, session_id, background_tasks)
 
     @app.get("/api/sessions/{session_id}/audio/status")
     async def get_session_audio_status(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_audio_status(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/metrics")
     async def get_session_metrics(session_id: str) -> JSONResponse:
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_metrics(data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/download")
     async def download_session(session_id: str):
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_download_session(data_dir, session_id)
 
     @app.post("/api/sessions/upload")
@@ -351,4 +403,5 @@ def register_ui_routes(app: FastAPI, data_dir: Path = None):
 
     @app.get("/api/sessions/{session_id}/environment")
     async def get_session_environment(session_id: str):
+        await _ensure_session_local(data_dir, session_id, remote_storage)
         return await _handle_get_session_environment(data_dir, session_id)
