@@ -151,6 +151,14 @@ class Session:
         return Trace(turn_count=self.turn_count)
 
     def get_audio_size_bytes(self) -> Optional[int]:
+        opus_file = self.session_dir / "audio.opus"
+        if opus_file.exists():
+            return opus_file.stat().st_size
+
+        wav_file = self.session_dir / "audio.wav"
+        if wav_file.exists():
+            return wav_file.stat().st_size
+
         sessions_base_dir = self.session_dir.parent
         chunks = find_chunks(sessions_base_dir, self.session_id)
         if not chunks:
@@ -159,9 +167,12 @@ class Session:
 
     def to_dict(self) -> dict:
         audio_bytes = self.get_audio_size_bytes()
-        audio_size_mb = (
-            audio_bytes // (1024 * 1024) if audio_bytes is not None else None
-        )
+        if audio_bytes is None:
+            audio_size_mb = None
+        elif audio_bytes < 1024 * 1024:
+            audio_size_mb = round(audio_bytes / (1024 * 1024), 1)
+        else:
+            audio_size_mb = audio_bytes // (1024 * 1024)
         return {
             "session_id": self.session_id,
             "service_name": self.service_name,

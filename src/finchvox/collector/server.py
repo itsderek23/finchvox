@@ -1,27 +1,32 @@
 import asyncio
 import signal
+from concurrent import futures
+
 import grpc
 import uvicorn
-from concurrent import futures
 from loguru import logger
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import (
     add_TraceServiceServicer_to_server,
 )
-from .service import TraceCollectorServicer
-from .writer import SpanWriter
-from .logs_writer import LogWriter
-from .exceptions_writer import ExceptionsWriter
+
+from finchvox.scheduler import start_scheduler, stop_scheduler
+
 from .audio_handler import AudioHandler
-from .http_server import create_app
 from .config import (
+    AUDIO_DIR,
+    EXCEPTIONS_DIR,
     GRPC_PORT,
     HTTP_PORT,
+    LOGS_DIR,
     MAX_WORKERS,
     TRACES_DIR,
-    AUDIO_DIR,
-    LOGS_DIR,
-    EXCEPTIONS_DIR,
+    get_default_data_dir,
 )
+from .exceptions_writer import ExceptionsWriter
+from .http_server import create_app
+from .logs_writer import LogWriter
+from .service import TraceCollectorServicer
+from .writer import SpanWriter
 
 
 class CollectorServer:
@@ -84,17 +89,19 @@ class CollectorServer:
 
     async def start(self):
         """Start both servers concurrently."""
-        # Start gRPC server
         await self.start_grpc()
 
-        # Start HTTP server (this blocks until shutdown)
+        data_dir = get_default_data_dir()
+        start_scheduler(data_dir)
+
         await self.start_http()
 
     async def stop(self, grace_period=5):
         """Gracefully stop both servers."""
         logger.info(f"Shutting down servers (grace period: {grace_period}s)")
 
-        # Stop HTTP server
+        stop_scheduler()
+
         if self.http_server:
             logger.info("Stopping HTTP server...")
             self.http_server.should_exit = True

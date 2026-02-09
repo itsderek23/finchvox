@@ -31,9 +31,9 @@ from finchvox.collector.config import (
     GRPC_PORT,
     MAX_WORKERS,
     get_default_data_dir,
-    get_sessions_base_dir,
 )
 from finchvox import telemetry
+from finchvox.scheduler import start_scheduler
 
 
 class UnifiedServer:
@@ -104,8 +104,6 @@ class UnifiedServer:
 
     async def start_grpc(self):
         """Start the gRPC server for OTLP trace collection."""
-        logger.info(f"Starting OTLP gRPC collector on port {self.grpc_port}")
-
         # Create gRPC server with thread pool
         self.grpc_server = grpc.server(
             futures.ThreadPoolExecutor(max_workers=MAX_WORKERS)
@@ -124,15 +122,9 @@ class UnifiedServer:
 
         # Start serving
         self.grpc_server.start()
-        logger.info(f"OTLP collector listening on port {self.grpc_port}")
-        logger.info(
-            f"Writing sessions to: {get_sessions_base_dir(self.data_dir).absolute()}"
-        )
 
     async def start_http(self):
         """Start the HTTP server using uvicorn."""
-        logger.info(f"Starting HTTP server on {self.host}:{self.port}")
-
         # Configure uvicorn server
         config = uvicorn.Config(
             self.app,
@@ -143,11 +135,6 @@ class UnifiedServer:
         )
         self.http_server = uvicorn.Server(config)
 
-        logger.info(f"HTTP server listening on http://{self.host}:{self.port}")
-        logger.info(f"  - UI: http://{self.host}:{self.port}")
-        logger.info(f"  - Collector: http://{self.host}:{self.port}/collector")
-        logger.info(f"Data directory: {self.data_dir.absolute()}")
-
         # Run server until shutdown event
         await self.http_server.serve()
 
@@ -156,6 +143,8 @@ class UnifiedServer:
         telemetry.send_event("server_start", dedupe=True)
 
         await self.start_grpc()
+
+        start_scheduler(self.data_dir)
 
         await self.start_http()
 
