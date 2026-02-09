@@ -51,14 +51,18 @@ class TestFindSessionsToCompress:
         self, temp_data_dir, session_with_old_chunks
     ):
         sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
         assert session_with_old_chunks in result
 
     def test_excludes_recently_active_session(
         self, temp_data_dir, session_with_recent_chunks
     ):
         sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
         assert session_with_recent_chunks not in result
 
     def test_excludes_already_compressed_session(
@@ -68,7 +72,9 @@ class TestFindSessionsToCompress:
         session_dir = sessions_dir / session_with_old_chunks
         (session_dir / "audio.opus").touch()
 
-        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
         assert session_with_old_chunks not in result
 
     def test_excludes_session_without_chunks(self, temp_data_dir):
@@ -78,18 +84,37 @@ class TestFindSessionsToCompress:
         audio_dir = session_dir / "audio"
         audio_dir.mkdir(parents=True)
 
-        result = find_sessions_to_compress(sessions_dir, inactive_minutes=5)
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
         assert session_id not in result
 
     def test_returns_empty_for_nonexistent_dir(self):
         result = find_sessions_to_compress(Path("/nonexistent/path"))
         assert result == []
 
-    def test_handles_custom_inactive_minutes(
+    def test_excludes_session_older_than_max_threshold(
+        self, temp_data_dir, create_wav_file
+    ):
+        sessions_dir = temp_data_dir / "sessions"
+        session_id = make_session_with_chunks(
+            sessions_dir,
+            "veryold1234567890123456789012",
+            create_wav_file,
+            time.time() - 7200,
+        )
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
+        assert session_id not in result
+
+    def test_excludes_session_not_old_enough(
         self, temp_data_dir, session_with_old_chunks
     ):
         sessions_dir = temp_data_dir / "sessions"
-        result = find_sessions_to_compress(sessions_dir, inactive_minutes=20)
+        result = find_sessions_to_compress(
+            sessions_dir, min_inactive_minutes=20, max_inactive_minutes=60
+        )
         assert session_with_old_chunks not in result
 
 
@@ -99,13 +124,17 @@ class TestCompressPendingSessions:
             mock_compressor = mock_compressor_class.return_value
             mock_compressor.compress.return_value = True
 
-            count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
+            count = compress_pending_sessions(
+                temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+            )
 
             assert count == 1
             mock_compressor.compress.assert_called_once_with(session_with_old_chunks)
 
     def test_returns_zero_when_no_sessions(self, temp_data_dir):
-        count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
+        count = compress_pending_sessions(
+            temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+        )
         assert count == 0
 
     def test_counts_successful_compressions(
@@ -126,7 +155,9 @@ class TestCompressPendingSessions:
             mock_compressor = mock_compressor_class.return_value
             mock_compressor.compress.side_effect = [True, False]
 
-            count = compress_pending_sessions(temp_data_dir, inactive_minutes=5)
+            count = compress_pending_sessions(
+                temp_data_dir, min_inactive_minutes=5, max_inactive_minutes=60
+            )
 
             assert count == 1
             assert mock_compressor.compress.call_count == 2
@@ -147,7 +178,7 @@ class TestSchedulerLifecycle:
 
         sched_module._scheduler = None
 
-        start_scheduler(temp_data_dir, interval_minutes=1, inactive_minutes=5)
+        start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=5)
         scheduler = get_scheduler()
         assert scheduler.running
 
@@ -160,3 +191,19 @@ class TestSchedulerLifecycle:
         sched_module._scheduler = None
         stop_scheduler()
         assert sched_module._scheduler is None
+
+    @pytest.mark.asyncio
+    async def test_scheduler_runs_immediately_on_start(self, temp_data_dir):
+        import asyncio
+        import finchvox.scheduler as sched_module
+
+        sched_module._scheduler = None
+
+        with patch("finchvox.scheduler.compress_pending_sessions") as mock_compress:
+            start_scheduler(temp_data_dir, interval_minutes=1, min_inactive_minutes=5)
+
+            await asyncio.sleep(0.1)
+
+            mock_compress.assert_called_once()
+
+            stop_scheduler()

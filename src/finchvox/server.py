@@ -33,6 +33,7 @@ from finchvox.collector.config import (
     get_default_data_dir,
 )
 from finchvox import telemetry
+from finchvox.scheduler import start_scheduler
 
 
 class UnifiedServer:
@@ -142,6 +143,8 @@ class UnifiedServer:
         telemetry.send_event("server_start", dedupe=True)
 
         await self.start_grpc()
+
+        start_scheduler(self.data_dir)
 
         await self.start_http()
 
