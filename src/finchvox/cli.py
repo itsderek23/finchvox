@@ -42,7 +42,7 @@ def cmd_start(args):
     else:
         data_dir = Path.home() / ".finchvox"
 
-    print("Starting FinchVox Unified Server...")
+    print(f"FinchVox v{get_version()}")
     print("=" * 50)
     print(f"HTTP Server:  http://{args.host}:{args.port}")
     print(f"  - UI:       http://{args.host}:{args.port}")
