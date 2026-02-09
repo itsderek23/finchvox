@@ -75,11 +75,12 @@ async def _handle_list_sessions(sessions_base_dir: Path) -> JSONResponse:
     if not sessions_base_dir.exists():
         return JSONResponse({"sessions": [], "data_dir": str(sessions_base_dir)})
 
-    sessions = []
-    for session_dir in sessions_base_dir.iterdir():
-        if not session_dir.is_dir():
-            continue
+    session_dirs = [d for d in sessions_base_dir.iterdir() if d.is_dir()]
+    session_dirs.sort(key=lambda d: d.stat().st_mtime, reverse=True)
+    session_dirs = session_dirs[:100]
 
+    sessions = []
+    for session_dir in session_dirs:
         try:
             session_dict = Session.load_dict_from_dir(session_dir)
             if session_dict:
