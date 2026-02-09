@@ -1,5 +1,6 @@
 import json
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +22,14 @@ from finchvox.collector.config import (
 from finchvox import telemetry
 from finchvox.storage.backend import StorageBackend
 from finchvox.storage.local import LocalStorage
+
+
+@dataclass
+class RouteContext:
+    data_dir: Path
+    sessions_base_dir: Path
+    local_storage: LocalStorage
+    remote_storage: Optional[StorageBackend]
 
 
 UI_DIR = Path(__file__).parent / "ui"
@@ -328,72 +337,68 @@ def _register_static_routes(app: FastAPI):
         return FileResponse(str(UI_DIR / "session_detail.html"))
 
 
-def _register_api_routes(
-    app: FastAPI,
-    data_dir: Path,
-    sessions_base_dir: Path,
-    local_storage: LocalStorage,
-    remote_storage: Optional[StorageBackend],
-):
+def _register_api_routes(app: FastAPI, ctx: RouteContext):
     @app.get("/api/sessions")
     async def list_sessions() -> JSONResponse:
         return await _handle_list_sessions(
-            sessions_base_dir, local_storage, remote_storage
+            ctx.sessions_base_dir, ctx.local_storage, ctx.remote_storage
         )
 
     @app.get("/api/sessions/{session_id}/trace")
     async def get_session_trace(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_trace(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_trace(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/raw")
     async def get_session_raw(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_raw(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_raw(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/logs")
     async def get_session_logs(session_id: str, limit: int = 1000) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_logs(data_dir, session_id, limit)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_logs(ctx.data_dir, session_id, limit)
 
     @app.get("/api/sessions/{session_id}/conversation")
     async def get_session_conversation(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_conversation(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_conversation(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/exceptions")
     async def get_session_exceptions(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_exceptions(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_exceptions(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/audio")
     async def get_session_audio(session_id: str, background_tasks: BackgroundTasks):
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_audio(data_dir, session_id, background_tasks)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_audio(
+            ctx.data_dir, session_id, background_tasks
+        )
 
     @app.get("/api/sessions/{session_id}/audio/status")
     async def get_session_audio_status(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_audio_status(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_audio_status(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/metrics")
     async def get_session_metrics(session_id: str) -> JSONResponse:
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_metrics(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_metrics(ctx.data_dir, session_id)
 
     @app.get("/api/sessions/{session_id}/download")
     async def download_session(session_id: str):
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_download_session(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_download_session(ctx.data_dir, session_id)
 
     @app.post("/api/sessions/upload")
     async def upload_session(file: UploadFile = File(...)):
-        return await _handle_upload_session(sessions_base_dir, file)
+        return await _handle_upload_session(ctx.sessions_base_dir, file)
 
     @app.get("/api/sessions/{session_id}/environment")
     async def get_session_environment(session_id: str):
-        await _ensure_session_local(data_dir, session_id, remote_storage)
-        return await _handle_get_session_environment(data_dir, session_id)
+        await _ensure_session_local(ctx.data_dir, session_id, ctx.remote_storage)
+        return await _handle_get_session_environment(ctx.data_dir, session_id)
 
 
 def register_ui_routes(
@@ -404,10 +409,12 @@ def register_ui_routes(
     if data_dir is None:
         data_dir = get_default_data_dir()
 
-    sessions_base_dir = get_sessions_base_dir(data_dir)
-    local_storage = LocalStorage(data_dir)
+    ctx = RouteContext(
+        data_dir=data_dir,
+        sessions_base_dir=get_sessions_base_dir(data_dir),
+        local_storage=LocalStorage(data_dir),
+        remote_storage=remote_storage,
+    )
 
     _register_static_routes(app)
-    _register_api_routes(
-        app, data_dir, sessions_base_dir, local_storage, remote_storage
-    )
+    _register_api_routes(app, ctx)

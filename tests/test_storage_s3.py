@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from finchvox.storage.backend import SessionFile
 from finchvox.storage.s3 import S3Storage
 
 
@@ -63,11 +64,12 @@ class TestS3StorageWriteFile:
     async def test_writes_to_s3(self, s3_storage):
         mock_s3 = AsyncMock()
         mock_s3.put_object = AsyncMock()
+        file = SessionFile(session_id="session123", filename="test.txt")
 
         with patch.object(
             s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
         ):
-            await s3_storage.write_file("session123", "test.txt", b"content")
+            await s3_storage.write_file(file, b"content")
 
         mock_s3.put_object.assert_called_once()
         call_kwargs = mock_s3.put_object.call_args.kwargs

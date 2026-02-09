@@ -8,6 +8,8 @@ import aioboto3
 from botocore.exceptions import ClientError
 from loguru import logger
 
+from finchvox.storage.backend import SessionFile
+
 
 class S3Storage:
     def __init__(
@@ -37,13 +39,13 @@ class S3Storage:
             kwargs["endpoint_url"] = self.endpoint_url
         return kwargs
 
-    async def write_file(self, session_id: str, filename: str, content: bytes) -> None:
-        key = f"{self._get_session_prefix(session_id)}/{filename}"
+    async def write_file(self, file: SessionFile, content: bytes) -> None:
+        key = f"{self._get_session_prefix(file.session_id)}/{file.filename}"
         async with self._session.client("s3", **self._get_client_kwargs()) as s3:
             await s3.put_object(Bucket=self.bucket, Key=key, Body=content)
-            logger.debug(f"Uploaded {filename} to s3://{self.bucket}/{key}")
+            logger.debug(f"Uploaded {file.filename} to s3://{self.bucket}/{key}")
 
-    async def read_file(self, session_id: str, filename: str) -> bytes:
+    async def read_file(self, file: SessionFile) -> bytes:
         prefix_pattern = f"{self.prefix}/"
         async with self._session.client("s3", **self._get_client_kwargs()) as s3:
             paginator = s3.get_paginator("list_objects_v2")
@@ -52,15 +54,15 @@ class S3Storage:
             ):
                 for obj in page.get("Contents", []):
                     key = obj["Key"]
-                    if key.endswith(f"/{session_id}/{filename}"):
+                    if key.endswith(f"/{file.session_id}/{file.filename}"):
                         response = await s3.get_object(Bucket=self.bucket, Key=key)
                         async with response["Body"] as stream:
                             return await stream.read()
-        raise FileNotFoundError(f"File not found: {session_id}/{filename}")
+        raise FileNotFoundError(f"File not found: {file.session_id}/{file.filename}")
 
-    async def file_exists(self, session_id: str, filename: str) -> bool:
+    async def file_exists(self, file: SessionFile) -> bool:
         try:
-            await self.read_file(session_id, filename)
+            await self.read_file(file)
             return True
         except FileNotFoundError:
             return False
@@ -106,7 +108,8 @@ class S3Storage:
 
     async def _fetch_manifest(self, session_id: str) -> dict | None:
         try:
-            content = await self.read_file(session_id, "manifest.json")
+            file = SessionFile(session_id=session_id, filename="manifest.json")
+            content = await self.read_file(file)
             return json.loads(content.decode("utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return None

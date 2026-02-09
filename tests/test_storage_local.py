@@ -1,6 +1,7 @@
 import json
 import pytest
 
+from finchvox.storage.backend import SessionFile
 from finchvox.storage.local import LocalStorage
 
 
@@ -28,8 +29,9 @@ class TestLocalStorageWriteFile:
     async def test_writes_file_to_session_dir(self, local_storage, temp_data_dir):
         session_id = "abc123def456789012345678"
         content = b"test content"
+        file = SessionFile(session_id=session_id, filename="test.txt")
 
-        await local_storage.write_file(session_id, "test.txt", content)
+        await local_storage.write_file(file, content)
 
         file_path = temp_data_dir / "sessions" / session_id / "test.txt"
         assert file_path.exists()
@@ -38,8 +40,9 @@ class TestLocalStorageWriteFile:
     @pytest.mark.asyncio
     async def test_creates_session_directory(self, local_storage, temp_data_dir):
         session_id = "new123session45678901234"
+        file = SessionFile(session_id=session_id, filename="data.bin")
 
-        await local_storage.write_file(session_id, "data.bin", b"data")
+        await local_storage.write_file(file, b"data")
 
         session_dir = temp_data_dir / "sessions" / session_id
         assert session_dir.exists()
@@ -54,7 +57,8 @@ class TestLocalStorageReadFile:
         session_dir.mkdir(parents=True)
         (session_dir / "content.txt").write_bytes(b"hello world")
 
-        result = await local_storage.read_file(session_id, "content.txt")
+        file = SessionFile(session_id=session_id, filename="content.txt")
+        result = await local_storage.read_file(file)
         assert result == b"hello world"
 
 
@@ -66,12 +70,14 @@ class TestLocalStorageFileExists:
         session_dir.mkdir(parents=True)
         (session_dir / "exists.txt").write_text("content")
 
-        assert await local_storage.file_exists(session_id, "exists.txt") is True
+        file = SessionFile(session_id=session_id, filename="exists.txt")
+        assert await local_storage.file_exists(file) is True
 
     @pytest.mark.asyncio
     async def test_returns_false_for_missing_file(self, local_storage):
         session_id = "missing123test4567890123"
-        assert await local_storage.file_exists(session_id, "missing.txt") is False
+        file = SessionFile(session_id=session_id, filename="missing.txt")
+        assert await local_storage.file_exists(file) is False
 
 
 class TestLocalStorageListSessions:

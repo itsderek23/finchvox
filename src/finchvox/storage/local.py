@@ -5,6 +5,7 @@ from pathlib import Path
 import aiofiles
 
 from finchvox.collector.config import get_sessions_base_dir, get_session_dir
+from finchvox.storage.backend import SessionFile
 
 
 class LocalStorage:
@@ -15,20 +16,20 @@ class LocalStorage:
     def _get_session_dir(self, session_id: str) -> Path:
         return get_session_dir(self.data_dir, session_id)
 
-    async def write_file(self, session_id: str, filename: str, content: bytes) -> None:
-        session_dir = self._get_session_dir(session_id)
+    async def write_file(self, file: SessionFile, content: bytes) -> None:
+        session_dir = self._get_session_dir(file.session_id)
         session_dir.mkdir(parents=True, exist_ok=True)
-        file_path = session_dir / filename
+        file_path = session_dir / file.filename
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(content)
 
-    async def read_file(self, session_id: str, filename: str) -> bytes:
-        file_path = self._get_session_dir(session_id) / filename
+    async def read_file(self, file: SessionFile) -> bytes:
+        file_path = self._get_session_dir(file.session_id) / file.filename
         async with aiofiles.open(file_path, "rb") as f:
             return await f.read()
 
-    async def file_exists(self, session_id: str, filename: str) -> bool:
-        file_path = self._get_session_dir(session_id) / filename
+    async def file_exists(self, file: SessionFile) -> bool:
+        file_path = self._get_session_dir(file.session_id) / file.filename
         return file_path.exists()
 
     async def list_sessions(self, limit: int = 100) -> list[dict]:
