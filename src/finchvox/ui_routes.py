@@ -120,15 +120,6 @@ async def _ensure_session_local(
     raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
 
-async def _get_session_async(
-    data_dir: Path,
-    session_id: str,
-    remote_storage: Optional[StorageBackend] = None,
-) -> Session:
-    session_dir = await _ensure_session_local(data_dir, session_id, remote_storage)
-    return Session(session_dir)
-
-
 def _get_session(data_dir: Path, session_id: str) -> Session:
     session_dir = get_session_dir(data_dir, session_id)
     if not session_dir.exists():

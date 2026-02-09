@@ -48,15 +48,7 @@ class SessionFinalizer:
 
     def _upload_to_storage(self, session_id: str, session_dir: Path) -> None:
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        try:
-            loop.run_until_complete(
-                self.storage_backend.upload_session(session_id, session_dir)
-            )
+            asyncio.run(self.storage_backend.upload_session(session_id, session_dir))
             logger.info(f"Uploaded session {session_id[:8]}... to remote storage")
 
             if self.delete_local_after_upload:

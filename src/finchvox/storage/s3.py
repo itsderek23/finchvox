@@ -161,9 +161,9 @@ class S3Storage:
 
         session_start = await self._get_session_start_time(local_dir, session_id)
         date = (
-            datetime.fromtimestamp(session_start)
+            datetime.fromtimestamp(session_start, tz=timezone.utc)
             if session_start
-            else datetime.utcnow()
+            else datetime.now(timezone.utc)
         )
 
         async with self._session.client("s3", **self._get_client_kwargs()) as s3:
