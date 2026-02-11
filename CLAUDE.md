@@ -1,3 +1,4 @@
 - Use `uv` to manage the environment + dependencies and not `pip`.
 - Minimize code in src/finchvox/ui_routes.py. Abstract functionality to Python classes like src/finchvox/session.py.
 - When planning, ensure tests are written for each feature.
+- Prior to commiting, run codescene - pre_commit_code_health_safeguard (MCP).

@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -9,8 +10,10 @@ from loguru import logger
 from finchvox.collector.config import get_sessions_base_dir
 from finchvox.session import Session
 from finchvox.session_finalizer import SessionFinalizer
+from finchvox.storage.backend import StorageBackend
 
 _scheduler: AsyncIOScheduler | None = None
+_storage_backend: Optional[StorageBackend] = None
 
 
 def get_scheduler() -> AsyncIOScheduler:
@@ -86,6 +89,7 @@ def finalize_pending_sessions(
     data_dir: Path,
     min_inactive_seconds: int = 60,
     max_inactive_seconds: int = 3600,
+    storage_backend: Optional[StorageBackend] = None,
 ) -> int:
     logger.debug("Running scheduled session finalization check")
     sessions_dir = get_sessions_base_dir(data_dir)
@@ -97,7 +101,7 @@ def finalize_pending_sessions(
         return 0
 
     logger.info(f"Found {len(sessions)} session(s) to finalize")
-    finalizer = SessionFinalizer(sessions_dir)
+    finalizer = SessionFinalizer(sessions_dir, storage_backend=storage_backend)
     finalized_count = 0
 
     for session_id in sessions:
@@ -112,13 +116,19 @@ def start_scheduler(
     interval_minutes: int = 1,
     min_inactive_minutes: int = 1,
     max_inactive_minutes: int = 60,
+    storage_backend: Optional[StorageBackend] = None,
 ):
+    global _storage_backend
+    _storage_backend = storage_backend
+
     scheduler = get_scheduler()
     min_inactive_seconds = min_inactive_minutes * 60
     max_inactive_seconds = max_inactive_minutes * 60
 
     def job():
-        finalize_pending_sessions(data_dir, min_inactive_seconds, max_inactive_seconds)
+        finalize_pending_sessions(
+            data_dir, min_inactive_seconds, max_inactive_seconds, _storage_backend
+        )
 
     scheduler.add_job(
         job,
