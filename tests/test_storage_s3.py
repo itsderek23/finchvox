@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError, EndpointConnectionError
 
 from finchvox.storage.backend import SessionFile
 from finchvox.storage.s3 import S3Storage
@@ -190,3 +191,165 @@ class AsyncContextManager:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
+
+
+class TestS3StorageValidateConnection:
+    @pytest.mark.asyncio
+    async def test_validates_existing_bucket(self, s3_storage):
+        mock_s3 = AsyncMock()
+        mock_s3.head_bucket = AsyncMock()
+
+        with patch.object(
+            s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            await s3_storage.validate_connection()
+
+        mock_s3.head_bucket.assert_called_once_with(Bucket="test-bucket")
+
+    @pytest.mark.asyncio
+    async def test_creates_bucket_when_missing(self, s3_storage):
+        mock_s3 = AsyncMock()
+        error_response = {"Error": {"Code": "404", "Message": "Not Found"}}
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=ClientError(error_response, "HeadBucket")
+        )
+        mock_s3.create_bucket = AsyncMock()
+
+        with patch.object(
+            s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            await s3_storage.validate_connection()
+
+        mock_s3.create_bucket.assert_called_once_with(Bucket="test-bucket")
+
+    @pytest.mark.asyncio
+    async def test_creates_bucket_with_location_for_non_us_east_1(self):
+        storage = S3Storage(bucket="test-bucket", region="eu-west-1")
+        mock_s3 = AsyncMock()
+        error_response = {"Error": {"Code": "404", "Message": "Not Found"}}
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=ClientError(error_response, "HeadBucket")
+        )
+        mock_s3.create_bucket = AsyncMock()
+
+        with patch.object(
+            storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            await storage.validate_connection()
+
+        mock_s3.create_bucket.assert_called_once_with(
+            Bucket="test-bucket",
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_exits_on_auth_failure(self, s3_storage, capsys):
+        mock_s3 = AsyncMock()
+        error_response = {"Error": {"Code": "403", "Message": "Access Denied"}}
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=ClientError(error_response, "HeadBucket")
+        )
+
+        with patch.object(
+            s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                await s3_storage.validate_connection()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "S3 Authentication Failed" in captured.out
+        assert "AWS_ACCESS_KEY_ID" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_exits_on_connection_error_with_endpoint(self, capsys):
+        storage = S3Storage(
+            bucket="test-bucket",
+            endpoint_url="http://localhost:4566",
+        )
+        mock_s3 = AsyncMock()
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=EndpointConnectionError(endpoint_url="http://localhost:4566")
+        )
+
+        with patch.object(
+            storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                await storage.validate_connection()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "S3 Connection Failed" in captured.out
+        assert "LocalStack" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_exits_on_connection_error_without_endpoint(self, s3_storage, capsys):
+        mock_s3 = AsyncMock()
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=EndpointConnectionError(endpoint_url="https://s3.amazonaws.com")
+        )
+
+        with patch.object(
+            s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                await s3_storage.validate_connection()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "S3 Connection Failed" in captured.out
+        assert "only needed for LocalStack/MinIO" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_exits_on_bucket_creation_failure(self, s3_storage, capsys):
+        mock_s3 = AsyncMock()
+        head_error = {"Error": {"Code": "404", "Message": "Not Found"}}
+        mock_s3.head_bucket = AsyncMock(
+            side_effect=ClientError(head_error, "HeadBucket")
+        )
+        create_error = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
+        mock_s3.create_bucket = AsyncMock(
+            side_effect=ClientError(create_error, "CreateBucket")
+        )
+
+        with patch.object(
+            s3_storage._session, "client", return_value=AsyncContextManager(mock_s3)
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                await s3_storage.validate_connection()
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "S3 Bucket Creation Failed" in captured.out
+        assert "aws s3 mb" in captured.out
+
+
+class TestS3StorageExitWithError:
+    def test_prints_formatted_error(self, s3_storage, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            s3_storage._exit_with_error(
+                "Test Error",
+                "Something went wrong",
+                ["Try this", "Or try that"],
+            )
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Test Error" in captured.out
+        assert "Something went wrong" in captured.out
+        assert "Try this" in captured.out
+        assert "Or try that" in captured.out
+        assert "test-bucket" in captured.out
+
+    def test_prints_endpoint_when_configured(self, capsys):
+        storage = S3Storage(
+            bucket="my-bucket",
+            endpoint_url="http://localhost:4566",
+        )
+
+        with pytest.raises(SystemExit):
+            storage._exit_with_error("Error", "Message", ["Hint"])
+
+        captured = capsys.readouterr()
+        assert "http://localhost:4566" in captured.out

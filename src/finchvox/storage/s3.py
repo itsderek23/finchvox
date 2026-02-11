@@ -1,11 +1,12 @@
 import asyncio
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import aioboto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 from loguru import logger
 
 from finchvox.storage.backend import SessionFile
@@ -38,6 +39,96 @@ class S3Storage:
         if self.endpoint_url:
             kwargs["endpoint_url"] = self.endpoint_url
         return kwargs
+
+    async def validate_connection(self) -> None:
+        async with self._session.client("s3", **self._get_client_kwargs()) as s3:
+            try:
+                await s3.head_bucket(Bucket=self.bucket)
+                logger.info(f"S3 bucket validated: {self.bucket}")
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                if error_code == "404":
+                    logger.info(f"Bucket {self.bucket} not found, creating...")
+                    await self._create_bucket(s3)
+                elif error_code == "403":
+                    self._exit_with_error(
+                        "S3 Authentication Failed",
+                        "Invalid or missing AWS credentials.",
+                        [
+                            "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY",
+                            "Or configure ~/.aws/credentials",
+                            "If using LocalStack: credentials can be any non-empty value",
+                        ],
+                    )
+                else:
+                    self._exit_with_error(
+                        "S3 Connection Failed",
+                        f"Could not connect to S3: {e.response['Error']['Message']}",
+                        [
+                            "If using AWS: check your network/firewall settings",
+                            "If using LocalStack/MinIO: verify --s3-endpoint URL is correct",
+                        ],
+                    )
+            except EndpointConnectionError:
+                if self.endpoint_url:
+                    self._exit_with_error(
+                        "S3 Connection Failed",
+                        f"Could not connect to S3 endpoint: {self.endpoint_url}",
+                        [
+                            "If using LocalStack: docker run -d -p 4566:4566 localstack/localstack",
+                            "Verify the endpoint URL is correct and the service is running",
+                        ],
+                    )
+                else:
+                    self._exit_with_error(
+                        "S3 Connection Failed",
+                        "Could not connect to AWS S3",
+                        [
+                            "Check your network connection and firewall settings",
+                            "Verify AWS credentials are configured correctly",
+                            "Note: --s3-endpoint is only needed for LocalStack/MinIO, not AWS",
+                        ],
+                    )
+
+    async def _create_bucket(self, s3) -> None:
+        try:
+            create_args = {"Bucket": self.bucket}
+            if self.region != "us-east-1":
+                create_args["CreateBucketConfiguration"] = {
+                    "LocationConstraint": self.region
+                }
+            await s3.create_bucket(**create_args)
+            logger.info(f"Created S3 bucket: {self.bucket}")
+        except ClientError as e:
+            self._exit_with_error(
+                "S3 Bucket Creation Failed",
+                f'Bucket "{self.bucket}" does not exist and could not be created.\n'
+                f"Error: {e.response['Error']['Message']}",
+                [
+                    f"Create the bucket manually: aws s3 mb s3://{self.bucket}",
+                    "Or grant s3:CreateBucket permission to your credentials",
+                ],
+            )
+
+    def _exit_with_error(
+        self, title: str, message: str, troubleshooting: list[str]
+    ) -> None:
+        print("=" * 50)
+        print(title)
+        print("=" * 50)
+        print(message)
+        print()
+        print("Troubleshooting:")
+        for item in troubleshooting:
+            print(f"  - {item}")
+        print()
+        print("Configuration:")
+        print(f"  Bucket:   {self.bucket}")
+        print(f"  Region:   {self.region}")
+        if self.endpoint_url:
+            print(f"  Endpoint: {self.endpoint_url}")
+        print("=" * 50)
+        sys.exit(1)
 
     async def write_file(self, file: SessionFile, content: bytes) -> None:
         key = f"{self._get_session_prefix(file.session_id)}/{file.filename}"

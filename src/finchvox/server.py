@@ -144,6 +144,12 @@ class UnifiedServer:
         """Start both gRPC and HTTP servers concurrently."""
         telemetry.send_event("server_start", dedupe=True)
 
+        if self.storage_backend is not None:
+            from finchvox.storage.s3 import S3Storage
+
+            if isinstance(self.storage_backend, S3Storage):
+                await self.storage_backend.validate_connection()
+
         await self.start_grpc()
 
         start_scheduler(self.data_dir, storage_backend=self.storage_backend)
