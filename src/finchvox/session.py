@@ -150,20 +150,6 @@ class Session:
     def trace(self) -> Trace:
         return Trace(turn_count=self.turn_count)
 
-    def is_root_span_ended(self) -> bool:
-        try:
-            with open(self.trace_file, "r") as f:
-                for line in f:
-                    if line.strip():
-                        span = json.loads(line)
-                        if not span.get("parent_span_id_hex") and span.get(
-                            "end_time_unix_nano"
-                        ):
-                            return True
-        except Exception:
-            pass
-        return False
-
     def get_audio_size_bytes(self) -> Optional[int]:
         opus_file = self.session_dir / "audio.opus"
         if opus_file.exists():
@@ -297,17 +283,6 @@ class Session:
                 return parts[0]
 
         return None
-
-    @staticmethod
-    def load_dict_from_dir(session_dir: Path) -> dict | None:
-        manifest_path = session_dir / "manifest.json"
-        if manifest_path.exists():
-            return json.loads(manifest_path.read_text())
-
-        trace_file = session_dir / f"trace_{session_dir.name}.jsonl"
-        if not trace_file.exists():
-            return None
-        return Session(session_dir).to_dict()
 
     @staticmethod
     def from_zip(
