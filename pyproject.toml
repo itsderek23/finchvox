@@ -11,7 +11,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-instrumentation-logging>=0.48b0",
-    "protobuf>=4.25.0,<6.0.0",
+    "protobuf>=4.25.0",
     "loguru>=0.7.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -20,6 +20,7 @@ dependencies = [
     "aiohttp>=3.9.0",
     "pipecat-ai[cartesia,daily,deepgram,silero]>=0.0.98",
     "aiortc>=1.14.0",
+    "apscheduler>=3.10.0",
 ]
 
 [project.scripts]

@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 from pathlib import Path
+from finchvox.cli import get_version
 from finchvox.server import UnifiedServer
 from finchvox.collector.config import GRPC_PORT, get_default_data_dir
 
@@ -53,8 +54,8 @@ Examples:
     else:
         data_dir = get_default_data_dir()
 
-    print("Starting FinchVox Unified Server...")
     print("=" * 50)
+    print(f"Finchvox v{get_version()}")
     print(f"HTTP Server:  http://{args.host}:{args.port}")
     print(f"  - UI:       http://{args.host}:{args.port}")
     print(f"  - Collector: http://{args.host}:{args.port}/collector")
