@@ -1,10 +1,9 @@
 import logging
 
+import finchvox
 from dotenv import load_dotenv
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, inference
 from livekit.plugins import silero
-
-import finchvox
 
 load_dotenv()
 
