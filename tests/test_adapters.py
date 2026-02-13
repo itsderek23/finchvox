@@ -257,9 +257,9 @@ class TestLiveKitAdapter:
         expected_order = {
             "agent_session": 1,
             "agent_turn": 2,
-            "agent_speaking": 3,
+            "tts_request": 3,
+            "agent_speaking": 4,
             "tts_node": 4,
-            "tts_request": 5,
             "tts_request_run": 6,
             "user_turn": 7,
             "user_speaking": 8,

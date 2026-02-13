@@ -60,7 +60,7 @@ SPAN_CONFIGS = {
         display_name="TTS",
         category="tts",
         css_class="bar-tts",
-        sort_order=5,
+        sort_order=3,
     ),
     "tts_request_run": SpanTypeConfig(
         display_name="TTS_REQUEST_RUN",
@@ -73,7 +73,7 @@ SPAN_CONFIGS = {
         display_name="AGENT_SPEAKING",
         category="tts",
         css_class="bar-tts",
-        sort_order=3,
+        sort_order=4,
     ),
 }
 
