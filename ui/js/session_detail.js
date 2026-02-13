@@ -289,32 +289,46 @@ function sessionDetailApp() {
 
 
         getSpanTypes() {
-            const categoryOrder = ['root', 'turn', 'stt', 'llm', 'tts', 'other'];
-            const typesByCategory = {};
+            const typeInfo = new Map();
 
             this.spans.forEach(span => {
-                const category = span._normalized?.category || 'other';
+                if (span._normalized?.hidden) return;
+
                 const displayName = span._normalized?.display_name || span.name.toUpperCase();
-                if (!typesByCategory[category]) {
-                    typesByCategory[category] = new Set();
-                }
-                typesByCategory[category].add(displayName);
-            });
+                const sortOrder = span._normalized?.sort_order;
+                const category = span._normalized?.category || 'other';
 
-            const result = [];
-            categoryOrder.forEach(category => {
-                if (typesByCategory[category]) {
-                    const sortedTypes = [...typesByCategory[category]].sort();
-                    result.push(...sortedTypes);
+                if (!typeInfo.has(displayName)) {
+                    typeInfo.set(displayName, { sortOrder, category });
                 }
             });
 
-            return result;
+            const categoryOrder = ['root', 'turn', 'stt', 'llm', 'tts', 'other'];
+
+            return [...typeInfo.entries()]
+                .sort((a, b) => {
+                    const [nameA, infoA] = a;
+                    const [nameB, infoB] = b;
+
+                    if (infoA.sortOrder !== undefined && infoB.sortOrder !== undefined) {
+                        return infoA.sortOrder - infoB.sortOrder;
+                    }
+                    if (infoA.sortOrder !== undefined) return -1;
+                    if (infoB.sortOrder !== undefined) return 1;
+
+                    const catIndexA = categoryOrder.indexOf(infoA.category);
+                    const catIndexB = categoryOrder.indexOf(infoB.category);
+                    if (catIndexA !== catIndexB) {
+                        return catIndexA - catIndexB;
+                    }
+                    return nameA.localeCompare(nameB);
+                })
+                .map(([name]) => name);
         },
 
         getSpansByType(type) {
             return this.spans
-                .filter(s => (s._normalized?.display_name || s.name.toUpperCase()) === type)
+                .filter(s => !s._normalized?.hidden && (s._normalized?.display_name || s.name.toUpperCase()) === type)
                 .sort((a, b) => a.startMs - b.startMs);
         },
 

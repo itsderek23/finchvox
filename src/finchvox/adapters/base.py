@@ -8,6 +8,8 @@ class SpanTypeConfig:
     display_name: str
     category: str
     css_class: str
+    sort_order: int = 999
+    hidden: bool = False
 
 
 class BaseTraceAdapter(ABC):
@@ -59,6 +61,8 @@ class BaseTraceAdapter(ABC):
             "display_name": config.display_name,
             "category": config.category,
             "css_class": config.css_class,
+            "sort_order": config.sort_order,
+            "hidden": config.hidden,
             "transcript": self.get_transcript(span),
             "output_text": self.get_output_text(span),
             "ttfb_seconds": self.get_ttfb(span),

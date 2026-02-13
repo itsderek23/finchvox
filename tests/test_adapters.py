@@ -172,10 +172,34 @@ class TestLiveKitAdapter:
     def test_get_span_config_llm_node(self, adapter):
         config = adapter.get_span_config("llm_node")
         assert config.category == "llm"
+        assert config.hidden is True
+
+    def test_get_span_config_llm_request(self, adapter):
+        config = adapter.get_span_config("llm_request")
+        assert config.display_name == "LLM"
+        assert config.category == "llm"
+        assert config.hidden is False
+
+    def test_get_span_config_llm_request_run(self, adapter):
+        config = adapter.get_span_config("llm_request_run")
+        assert config.category == "llm"
+        assert config.hidden is True
 
     def test_get_span_config_tts_node(self, adapter):
         config = adapter.get_span_config("tts_node")
         assert config.category == "tts"
+        assert config.hidden is True
+
+    def test_get_span_config_tts_request(self, adapter):
+        config = adapter.get_span_config("tts_request")
+        assert config.display_name == "TTS"
+        assert config.category == "tts"
+        assert config.hidden is False
+
+    def test_get_span_config_tts_request_run(self, adapter):
+        config = adapter.get_span_config("tts_request_run")
+        assert config.category == "tts"
+        assert config.hidden is True
 
     def test_get_span_config_agent_speaking(self, adapter):
         config = adapter.get_span_config("agent_speaking")
@@ -228,3 +252,55 @@ class TestLiveKitAdapter:
         assert normalized["_normalized"]["css_class"] == "bar-llm"
         assert normalized["_normalized"]["output_text"] == "AI response"
         assert normalized["_normalized"]["ttfb_seconds"] == 0.3
+
+    def test_sort_order_values(self, adapter):
+        expected_order = {
+            "agent_session": 1,
+            "agent_turn": 2,
+            "agent_speaking": 3,
+            "tts_node": 4,
+            "tts_request": 5,
+            "tts_request_run": 6,
+            "user_turn": 7,
+            "user_speaking": 8,
+            "llm_node": 9,
+            "llm_request": 10,
+            "llm_request_run": 11,
+        }
+        for span_name, expected_sort_order in expected_order.items():
+            config = adapter.get_span_config(span_name)
+            assert config.sort_order == expected_sort_order, (
+                f"Expected {span_name} to have sort_order {expected_sort_order}, "
+                f"got {config.sort_order}"
+            )
+
+    def test_unknown_span_gets_default_sort_order(self, adapter):
+        config = adapter.get_span_config("unknown_custom_span")
+        assert config.sort_order == 999
+        assert config.hidden is False
+
+    def test_normalize_span_includes_sort_order(self, adapter):
+        span = {
+            "name": "agent_session",
+            "span_id_hex": "abc123",
+            "attributes": [],
+        }
+        normalized = adapter.normalize_span(span)
+        assert normalized["_normalized"]["sort_order"] == 1
+
+    def test_normalize_span_includes_hidden(self, adapter):
+        span = {
+            "name": "tts_node",
+            "span_id_hex": "abc123",
+            "attributes": [],
+        }
+        normalized = adapter.normalize_span(span)
+        assert normalized["_normalized"]["hidden"] is True
+
+        span2 = {
+            "name": "tts_request",
+            "span_id_hex": "def456",
+            "attributes": [],
+        }
+        normalized2 = adapter.normalize_span(span2)
+        assert normalized2["_normalized"]["hidden"] is False
